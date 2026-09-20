@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
+using FloppyGames.Core.Launch;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
 using Serilog;
@@ -10,6 +12,8 @@ public partial class MainWindow : Window
 {
     private readonly ILogger _logger;
     private readonly RemovableGameMediaService _mediaService;
+    private readonly GameSessionManager _sessionManager;
+    private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
 
     public ObservableCollection<string> StatusLog { get; } = new();
 
@@ -36,6 +40,12 @@ public partial class MainWindow : Window
         _mediaService.MediaRemoved += OnMediaRemoved;
         _mediaService.InvalidMediaDetected += OnInvalidMediaDetected;
 
+        _sessionManager = new GameSessionManager(_mediaService, new SteamProtocolLauncher(), new Win32ProcessGateway(), _logger);
+        _sessionManager.LaunchStarting += OnLaunchStarting;
+        _sessionManager.GameLaunched += OnGameLaunched;
+        _sessionManager.GameLaunchFailed += OnGameLaunchFailed;
+        _sessionManager.GameStopped += OnGameStopped;
+
         _mediaService.Start();
         AppendStatus("A vigiar unidades amovíveis...");
 
@@ -51,12 +61,56 @@ public partial class MainWindow : Window
     private void OnInvalidMediaDetected(object? sender, InvalidMediaEventArgs e) =>
         AppendStatus($"GAME.INI inválido em {e.DriveRoot}: {string.Join(" | ", e.Errors)}");
 
+    private void OnLaunchStarting(object? sender, GameLaunchStartingEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            var splash = new SplashWindow();
+            var coverPath = e.Config.Cover is null ? null : Path.Combine(e.DriveRoot, e.Config.Cover);
+            splash.SetGame(e.Config.Title, coverPath);
+            splash.SetStatus("A abrir a Steam...");
+            splash.Show();
+
+            if (_splashWindows.Remove(e.DriveRoot, out var previous))
+            {
+                previous.Close();
+            }
+
+            _splashWindows[e.DriveRoot] = splash;
+            AppendStatus($"A lançar {e.Config.Title}...");
+        });
+
+    private void OnGameLaunched(object? sender, GameLaunchedEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            if (_splashWindows.Remove(e.DriveRoot, out var splash))
+            {
+                splash.ShowSuccessAndAutoClose($"{e.Config.Title} em execução.");
+            }
+
+            AppendStatus($"{e.Config.Title} confirmado em execução.");
+        });
+
+    private void OnGameLaunchFailed(object? sender, GameLaunchFailedEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            if (_splashWindows.Remove(e.DriveRoot, out var splash))
+            {
+                splash.ShowErrorAndAutoClose(e.Reason);
+            }
+
+            AppendStatus($"Falha ao lançar {e.Config.Title}: {e.Reason}");
+        });
+
+    private void OnGameStopped(object? sender, GameStoppedEventArgs e) =>
+        AppendStatus($"{e.Config.Title} terminado.");
+
     private void AppendStatus(string message) =>
         Dispatcher.Invoke(() => StatusLog.Insert(0, $"{DateTime.Now:HH:mm:ss} — {message}"));
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _logger.Information("FloppyGames Agent a terminar.");
+        _sessionManager.Dispose();
         _mediaService.Dispose();
     }
 }

@@ -34,6 +34,44 @@ public class GameIniParserTests
     }
 
     [Fact]
+    public void Parse_LaunchDelayZero_IsValid_MeansLaunchImmediately()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            APPID=400
+            PROCESS=portal.exe
+
+            [Options]
+            LaunchDelaySeconds=0
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.Config!.LaunchDelaySeconds);
+    }
+
+    [Fact]
+    public void Parse_WatchTimeoutZero_IsInvalid_SinceItWouldNeverConfirmLaunch()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            APPID=400
+            PROCESS=portal.exe
+
+            [Options]
+            WatchTimeoutSeconds=0
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("WatchTimeoutSeconds", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Parse_MinimalValidIni_AppliesDefaults()
     {
         const string ini = """

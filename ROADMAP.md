@@ -28,14 +28,19 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** inserir/remover uma disquete real (ou pen USB) com `GAME.INI` gera logs corretos no Agent, sem eventos duplicados. ✅ Verificado.
 
-## Fase 2 — Agent: Lançamento e Vigilância
+## Fase 2 — Agent: Lançamento e Vigilância ✅ (pendente confirmação end-to-end com hardware real)
 
-- [ ] Janela de splash (WPF, sem *chrome*, sempre no topo) com capa + barra de progresso animada estilo retro.
-- [ ] Implementar `LaunchDelaySeconds` antes de disparar `steam://run/<APPID>`.
-- [ ] Implementar `ProcessWatcher`: sondagem do `PROCESS` configurado, respeitando `WatchTimeoutSeconds`.
-- [ ] Fechar a splash quando o processo é confirmado; mostrar erro se o timeout expirar (jogo não instalado, Steam não autenticado, etc.).
-- [ ] Implementar encerramento no *eject*: `GracefulShutdown` (`WM_CLOSE`) com fallback para `TerminateProcess` após timeout curto.
-- [ ] Suportar múltiplos suportes em simultâneo (mapa `driveLetter → processo lançado`), sem interferência entre eles.
+- [x] Janela de splash (WPF, sem *chrome*, sempre no topo) com capa + barra de progresso; fecha-se sozinha ao chegar a um estado final (`SplashWindow`).
+- [x] Implementar `LaunchDelaySeconds` antes de disparar `steam://run/<APPID>` (`GameSessionManager`).
+- [x] Implementar espera pelo processo: `IProcessGateway`/`Win32ProcessGateway` sondam por `PROCESS` até `WatchTimeoutSeconds`; uma vez encontrado, a deteção de saída passa a ser orientada a eventos (`Process.Exited`), sem mais polling.
+- [x] Fechar a splash quando o processo é confirmado; mostrar erro (com auto-close) se o timeout expirar.
+- [x] Implementar encerramento no *eject*: `GracefulShutdown` (`CloseMainWindow` + espera) com fallback para `Kill(entireProcessTree: true)`.
+- [x] Suportar múltiplos suportes em simultâneo — `GameSessionManager` rastreia sessões e lançamentos pendentes por `driveRoot`, sem interferência entre eles.
+- [x] Extra: cancelamento de lançamentos em curso se o suporte for removido antes de o processo ser confirmado (evita "jogos fantasma" lançados depois de a disquete já ter saído).
+
+**Verificação:** 43/43 testes automatizados (incluindo fluxos assíncronos completos: lançamento, timeout, cancelamento a meio do atraso, encerramento gracioso/forçado, saída espontânea do processo). Confirmado com WMI real que `A:\` é reportada como disquete genuína (`MediaType` floppy) e que a Steam está instalada na máquina de desenvolvimento — falta apenas o teste manual com uma disquete real a lançar um jogo de facto.
+
+**Como testar manualmente:** correr `dotnet run --project src/FloppyGames.Agent`, inserir uma disquete/pen com o `GAME.INI` do CS2 ([samples/CS2/GAME.INI](samples/CS2/GAME.INI)) — deve aparecer uma splash com o título, a Steam deve abrir o CS2 ao fim de ~2s, a splash fecha quando o `cs2.exe` for confirmado. Remover a disquete deve fechar o jogo.
 
 **Critério de saída:** fluxo ponta-a-ponta funcional — inserir disquete/pen → jogo abre → remover → jogo fecha.
 

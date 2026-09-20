@@ -29,7 +29,7 @@ public static class GameIniParser
         var cover = game?.GetValueOrDefault("COVER");
 
         var watchTimeoutSeconds = OptionalPositiveInt(options, "WatchTimeoutSeconds", 30, errors);
-        var launchDelaySeconds = OptionalPositiveInt(options, "LaunchDelaySeconds", 2, errors);
+        var launchDelaySeconds = OptionalNonNegativeInt(options, "LaunchDelaySeconds", 2, errors);
         var gracefulShutdown = OptionalBool(options, "GracefulShutdown", true, errors);
 
         if (errors.Count > 0)
@@ -92,6 +92,23 @@ public static class GameIniParser
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
         {
             errors.Add($"[Options] {key} tem de ser um número inteiro positivo (valor recebido: '{raw}').");
+            return defaultValue;
+        }
+
+        return parsed;
+    }
+
+    private static int OptionalNonNegativeInt(IReadOnlyDictionary<string, string>? section, string key, int defaultValue, List<string> errors)
+    {
+        var raw = section?.GetValueOrDefault(key);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return defaultValue;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < 0)
+        {
+            errors.Add($"[Options] {key} tem de ser um número inteiro não negativo (valor recebido: '{raw}').");
             return defaultValue;
         }
 
