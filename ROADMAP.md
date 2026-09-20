@@ -12,13 +12,15 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** `FloppyGames.Core` compila, com parser de `GAME.INI` testado (casos válidos, inválidos, campos opcionais em falta).
 
-## Fase 1 — Agent: Deteção de Mídia
+## Fase 1 — Agent: Deteção de Mídia ✅ (pendente apenas o teste manual com hardware)
 
-- [ ] Implementar `IRemovableMediaWatcher` com `RegisterDeviceNotification` / `WM_DEVICECHANGE` para arrival/removal de volumes.
-- [ ] Filtrar apenas unidades amovíveis (`DRIVE_REMOVABLE`), ignorar discos fixos e óticos.
-- [ ] Validar presença de `GAME.INI` na raiz do volume recém-inserido.
-- [ ] Emitir eventos internos `MediaInserted(GameConfig)` / `MediaRemoved(driveLetter)`.
-- [ ] Testes de integração manuais com pen USB (real floppy fica para Fase 6).
+- [x] Implementar `IRemovableMediaWatcher` — decisão: WMI (`Win32_VolumeChangeEvent`) em vez de `RegisterDeviceNotification`/`WM_DEVICECHANGE`, por não exigir um `HWND`/message loop, o que mantém o `Core` livre de dependências de UI e testável.
+- [x] Filtrar apenas unidades amovíveis (`DriveType.Removable`), ignorar discos fixos e óticos — em `FileSystemDriveInspector` + `GameMediaScanner`.
+- [x] Validar presença de `GAME.INI` na raiz do volume recém-inserido.
+- [x] Emitir eventos internos `MediaInserted` / `MediaRemoved` / `InvalidMediaDetected` via `RemovableGameMediaService`, com o `GameConfig` sempre disponível (também no evento de remoção, para o Agent saber que processo terminar sem estado próprio).
+- [ ] Testes de integração manuais com pen USB real (requer hardware do utilizador — ver instruções abaixo). Real floppy fica para a Fase 6.
+
+**Como testar manualmente:** correr `dotnet run --project src/FloppyGames.Agent`, inserir uma pen USB com um `GAME.INI` válido na raiz — a janela e o ficheiro `%LOCALAPPDATA%\FloppyGames\logs\Agent-*.log` devem mostrar "Disquete reconhecida"; ao remover, deve aparecer "Disquete removida".
 
 **Critério de saída:** inserir/remover uma pen USB com `GAME.INI` gera logs corretos no Agent, sem *polling*.
 
