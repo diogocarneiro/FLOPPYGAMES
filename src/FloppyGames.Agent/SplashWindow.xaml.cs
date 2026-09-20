@@ -16,6 +16,7 @@ public partial class SplashWindow : Window
     private readonly DispatcherTimer _progressTimer = new();
     private DateTime _progressStartUtc;
     private TimeSpan _progressEstimatedDuration = TimeSpan.FromSeconds(1);
+    private double _progressFraction;
 
     public SplashWindow()
     {
@@ -38,12 +39,14 @@ public partial class SplashWindow : Window
         DescriptionText.Text = description ?? string.Empty;
         DescriptionText.Visibility = string.IsNullOrWhiteSpace(description) ? Visibility.Collapsed : Visibility.Visible;
 
-        FloppyIcon.Visibility = mediaKind == MediaKind.Floppy ? Visibility.Visible : Visibility.Collapsed;
-        UsbIcon.Visibility = mediaKind == MediaKind.Usb ? Visibility.Visible : Visibility.Collapsed;
+        var isFloppy = mediaKind == MediaKind.Floppy;
+        FloppyIcon.Visibility = isFloppy ? Visibility.Visible : Visibility.Collapsed;
+        UsbIcon.Visibility = isFloppy ? Visibility.Collapsed : Visibility.Visible;
+        MediaKindLabel.Text = SpaceOutLetters(isFloppy ? "DISQUETE DETETADA" : "PEN USB DETETADA");
 
-        SizeText.Text = "Tamanho: a verificar...";
-        Crc32Text.Text = "CRC32: a calcular...";
-        InstalledText.Text = "Instalado: a verificar...";
+        SizeText.Text = "TAMANHO   a verificar...";
+        Crc32Text.Text = "CRC32     a calcular...";
+        InstalledText.Text = "STEAM     a verificar...";
 
         if (!string.IsNullOrWhiteSpace(coverPath) && File.Exists(coverPath))
         {
@@ -57,7 +60,7 @@ public partial class SplashWindow : Window
                 bitmap.Freeze();
 
                 CoverImage.Source = bitmap;
-                CoverImage.Visibility = Visibility.Visible;
+                CoverCard.Visibility = Visibility.Visible;
                 BackgroundImage.Source = bitmap;
                 BackgroundImage.Visibility = Visibility.Visible;
                 return;
@@ -68,7 +71,7 @@ public partial class SplashWindow : Window
             }
         }
 
-        CoverImage.Visibility = Visibility.Collapsed;
+        CoverCard.Visibility = Visibility.Collapsed;
         BackgroundImage.Visibility = Visibility.Collapsed;
     }
 
@@ -77,11 +80,11 @@ public partial class SplashWindow : Window
     /// <summary>Preenche tamanho/CRC32/estado de instalação assim que ficam disponíveis (calculados fora da UI thread).</summary>
     public void SetSummary(GameLaunchSummary summary)
     {
-        SizeText.Text = $"Suporte: {FormatBytes(summary.MediaSizeBytes)}";
-        Crc32Text.Text = $"CRC32: {summary.MediaCrc32:X8}";
+        SizeText.Text = $"TAMANHO   {FormatBytes(summary.MediaSizeBytes)}";
+        Crc32Text.Text = $"CRC32     {summary.MediaCrc32:X8}";
         InstalledText.Text = summary.IsInstalledOnSteam
-            ? $"Instalado: Sim ({FormatBytes(summary.InstalledSizeBytes ?? 0)})"
-            : "Instalado: Não";
+            ? $"STEAM     instalado ({FormatBytes(summary.InstalledSizeBytes ?? 0)})"
+            : "STEAM     não instalado";
     }
 
     /// <summary>
@@ -91,11 +94,9 @@ public partial class SplashWindow : Window
     /// </summary>
     public void StartProgress(TimeSpan estimatedDuration)
     {
-        ProgressIndicator.IsIndeterminate = false;
-        ProgressIndicator.Value = 0;
-
         _progressEstimatedDuration = estimatedDuration <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : estimatedDuration;
         _progressStartUtc = DateTime.UtcNow;
+        SetProgressFraction(0);
         _progressTimer.Start();
     }
 
@@ -103,15 +104,26 @@ public partial class SplashWindow : Window
     {
         var elapsed = DateTime.UtcNow - _progressStartUtc;
         var fraction = elapsed.TotalSeconds / _progressEstimatedDuration.TotalSeconds;
-        ProgressIndicator.Value = Math.Clamp(fraction * 100, 0, 92);
+        SetProgressFraction(Math.Clamp(fraction, 0, 0.92));
+    }
+
+    private void SetProgressFraction(double fraction)
+    {
+        _progressFraction = fraction;
+        var trackWidth = ProgressTrack.ActualWidth;
+        if (trackWidth > 0)
+        {
+            ProgressFill.Width = trackWidth * fraction;
+        }
+
+        ProgressPercentText.Text = $"{fraction * 100:0}%";
     }
 
     public void ShowSuccessAndAutoClose(string message)
     {
         _progressTimer.Stop();
         StatusText.Text = message;
-        ProgressIndicator.IsIndeterminate = false;
-        ProgressIndicator.Value = ProgressIndicator.Maximum;
+        SetProgressFraction(1);
         _autoCloseTimer.Interval = TimeSpan.FromSeconds(1.5);
         _autoCloseTimer.Start();
     }
@@ -121,10 +133,22 @@ public partial class SplashWindow : Window
         _progressTimer.Stop();
         StatusText.Text = message;
         StatusText.Foreground = System.Windows.Media.Brushes.OrangeRed;
-        ProgressIndicator.IsIndeterminate = false;
+        ProgressFill.Background = System.Windows.Media.Brushes.OrangeRed;
         _autoCloseTimer.Interval = TimeSpan.FromSeconds(5);
         _autoCloseTimer.Start();
     }
+
+    protected override void OnContentRendered(EventArgs e)
+    {
+        base.OnContentRendered(e);
+
+        // A primeira medição do layout só fica pronta depois do primeiro render — reaplica a
+        // fração atual para o preenchimento em pixels não ficar preso a 0 caso StartProgress
+        // tenha corrido antes da janela ter sequer uma ActualWidth.
+        SetProgressFraction(_progressFraction);
+    }
+
+    private static string SpaceOutLetters(string text) => string.Join(' ', text.ToCharArray());
 
     private static string FormatBytes(long bytes)
     {
