@@ -44,9 +44,16 @@ public partial class SplashWindow : Window
         UsbIcon.Visibility = isFloppy ? Visibility.Collapsed : Visibility.Visible;
         MediaKindLabel.Text = SpaceOutLetters(isFloppy ? "DISQUETE DETETADA" : "PEN USB DETETADA");
 
-        SizeText.Text = "TAMANHO   a verificar...";
-        Crc32Text.Text = "CRC32     a calcular...";
-        InstalledText.Text = "STEAM     a verificar...";
+        SizeText.Text = FormatStatLine("SUPORTE", "a verificar...");
+        InstalledText.Text = FormatStatLine("STEAM", "a verificar...");
+        BuildText.Text = FormatStatLine("BUILD", "a verificar...");
+        UpdatedText.Text = FormatStatLine("ATUALIZADO", "a verificar...");
+        PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", "a verificar...");
+        LastSessionText.Text = FormatStatLine("ÚLTIMA SESSÃO", "a verificar...");
+        BuildText.Visibility = Visibility.Visible;
+        UpdatedText.Visibility = Visibility.Visible;
+        PlaytimeText.Visibility = Visibility.Visible;
+        LastSessionText.Visibility = Visibility.Visible;
 
         if (!string.IsNullOrWhiteSpace(coverPath) && File.Exists(coverPath))
         {
@@ -77,14 +84,26 @@ public partial class SplashWindow : Window
 
     public void SetStatus(string message) => StatusText.Text = message;
 
-    /// <summary>Preenche tamanho/CRC32/estado de instalação assim que ficam disponíveis (calculados fora da UI thread).</summary>
+    /// <summary>Preenche tamanho/estado de instalação/build/tempo de jogo assim que ficam disponíveis (calculados fora da UI thread).</summary>
     public void SetSummary(GameLaunchSummary summary)
     {
-        SizeText.Text = $"TAMANHO   {FormatBytes(summary.MediaSizeBytes)}";
-        Crc32Text.Text = $"CRC32     {summary.MediaCrc32:X8}";
-        InstalledText.Text = summary.IsInstalledOnSteam
-            ? $"STEAM     instalado ({FormatBytes(summary.InstalledSizeBytes ?? 0)})"
-            : "STEAM     não instalado";
+        SizeText.Text = FormatStatLine("SUPORTE", FormatBytes(summary.MediaSizeBytes));
+
+        if (!summary.IsInstalledOnSteam)
+        {
+            InstalledText.Text = FormatStatLine("STEAM", "não instalado");
+            BuildText.Visibility = Visibility.Collapsed;
+            UpdatedText.Visibility = Visibility.Collapsed;
+            PlaytimeText.Visibility = Visibility.Collapsed;
+            LastSessionText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        InstalledText.Text = FormatStatLine("STEAM", $"instalado ({FormatBytes(summary.InstalledSizeBytes ?? 0)})");
+        BuildText.Text = FormatStatLine("BUILD", summary.BuildId ?? "desconhecida");
+        UpdatedText.Text = FormatStatLine("ATUALIZADO", FormatDate(summary.LastUpdatedUtc));
+        PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", FormatPlaytime(summary.PlaytimeMinutes));
+        LastSessionText.Text = FormatStatLine("ÚLTIMA SESSÃO", FormatDate(summary.LastPlayedUtc));
     }
 
     /// <summary>
@@ -149,6 +168,23 @@ public partial class SplashWindow : Window
     }
 
     private static string SpaceOutLetters(string text) => string.Join(' ', text.ToCharArray());
+
+    private static string FormatStatLine(string label, string value) => string.Format("{0,-15}{1}", label, value);
+
+    private static string FormatDate(DateTime? utc) =>
+        utc is null ? "desconhecida" : utc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
+    private static string FormatPlaytime(long? minutes)
+    {
+        if (minutes is null)
+        {
+            return "não disponível";
+        }
+
+        var hours = minutes.Value / 60;
+        var mins = minutes.Value % 60;
+        return hours > 0 ? $"{hours}h {mins}min" : $"{mins}min";
+    }
 
     private static string FormatBytes(long bytes)
     {

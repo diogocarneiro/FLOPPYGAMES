@@ -112,8 +112,11 @@
                         Padding="20,16" Margin="0,0,0,24">
                     <StackPanel>
                         <TextBlock x:Name="SizeText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
-                        <TextBlock x:Name="Crc32Text" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
-                        <TextBlock x:Name="InstalledText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" />
+                        <TextBlock x:Name="InstalledText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
+                        <TextBlock x:Name="BuildText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
+                        <TextBlock x:Name="UpdatedText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
+                        <TextBlock x:Name="PlaytimeText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
+                        <TextBlock x:Name="LastSessionText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" />
                     </StackPanel>
                 </Border>
 

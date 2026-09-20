@@ -72,6 +72,54 @@ public class SteamLibraryScannerTests
     }
 
     [Fact]
+    public void ScanInstalledGames_ManifestWithBuildAndDates_ParsesThem()
+    {
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "730"
+                "name"        "Counter-Strike 2"
+                "installdir"        "Counter-Strike Global Offensive"
+                "buildid"        "23920604"
+                "LastUpdated"        "1789930336"
+                "LastPlayed"        "1789936035"
+                "LastOwner"        "76561197987670757"
+            }
+            """;
+
+        var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_730.acf", manifest);
+        var scanner = new SteamLibraryScanner(fs, new FakeSteamPathProvider(@"C:\Steam"));
+
+        var game = Assert.Single(scanner.ScanInstalledGames());
+
+        Assert.Equal("23920604", game.BuildId);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1789930336).UtcDateTime, game.LastUpdatedUtc);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1789936035).UtcDateTime, game.LastPlayedUtc);
+        Assert.Equal(76561197987670757UL, game.LastOwnerSteamId64);
+    }
+
+    [Fact]
+    public void ScanInstalledGames_ManifestWithZeroLastPlayed_MeansNeverPlayed_IsNull()
+    {
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "730"
+                "name"        "Counter-Strike 2"
+                "installdir"        "Counter-Strike Global Offensive"
+                "LastPlayed"        "0"
+            }
+            """;
+
+        var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_730.acf", manifest);
+        var scanner = new SteamLibraryScanner(fs, new FakeSteamPathProvider(@"C:\Steam"));
+
+        var game = Assert.Single(scanner.ScanInstalledGames());
+
+        Assert.Null(game.LastPlayedUtc);
+    }
+
+    [Fact]
     public void ScanInstalledGames_MultipleLibraryFolders_ScansAllOfThem()
     {
         const string librariesVdf = """

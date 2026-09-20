@@ -93,13 +93,27 @@ public sealed class SteamLibraryScanner
             var sizeOnDiskBytes = long.TryParse(root.GetString("SizeOnDisk"), out var sizeOnDisk)
                 ? sizeOnDisk
                 : (long?)null;
+            var buildId = root.GetString("buildid");
+            var lastUpdatedUtc = TryParseUnixSeconds(root.GetString("LastUpdated"));
+            var lastPlayedUtc = TryParseUnixSeconds(root.GetString("LastPlayed"));
+            var lastOwnerSteamId64 = ulong.TryParse(root.GetString("LastOwner"), out var lastOwner)
+                ? lastOwner
+                : (ulong?)null;
 
             var installPath = Path.Combine(steamAppsDir, "common", installDir);
-            return new InstalledSteamGame(appId, name, installDir, installPath, sizeOnDiskBytes);
+            return new InstalledSteamGame(
+                appId, name, installDir, installPath,
+                sizeOnDiskBytes, buildId, lastUpdatedUtc, lastPlayedUtc, lastOwnerSteamId64);
         }
         catch (FormatException)
         {
             return null;
         }
     }
+
+    /// <summary>"0" no manifesto significa "nunca" (nunca atualizado/jogado) — não um instante real.</summary>
+    private static DateTime? TryParseUnixSeconds(string? raw) =>
+        long.TryParse(raw, out var seconds) && seconds > 0
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime
+            : null;
 }

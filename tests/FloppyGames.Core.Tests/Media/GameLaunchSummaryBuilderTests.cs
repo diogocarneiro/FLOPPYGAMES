@@ -7,6 +7,8 @@ namespace FloppyGames.Core.Tests.Media;
 
 public class GameLaunchSummaryBuilderTests : IDisposable
 {
+    private const ulong OwnerSteamId64 = 76561197960265728UL + 12345UL;
+
     private static readonly GameConfig Config = new() { Title = "Portal", AppId = 400, Process = "portal.exe" };
 
     private readonly string _driveRoot;
@@ -20,34 +22,23 @@ public class GameLaunchSummaryBuilderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_driveRoot, recursive: true);
 
-    [Fact]
-    public void Build_SameMediaContent_ProducesSameCrc32AndPositiveSize()
-    {
-        var builder = new GameLaunchSummaryBuilder(new SteamLibraryScanner(new FakeSteamFileSystem(), new FakeSteamPathProvider(null)));
-
-        var first = builder.Build(_driveRoot, Config);
-        var second = builder.Build(_driveRoot, Config);
-
-        Assert.Equal(first.MediaCrc32, second.MediaCrc32);
-        Assert.True(first.MediaSizeBytes > 0);
-    }
+    private static GameLaunchSummaryBuilder BuildBuilder(FakeSteamFileSystem fs, string? steamPath) =>
+        new(new SteamLibraryScanner(fs, new FakeSteamPathProvider(steamPath)), new SteamPlaytimeReader(fs, new FakeSteamPathProvider(steamPath)));
 
     [Fact]
-    public void Build_MediaContentChanges_Crc32Changes()
+    public void Build_MediaOnDrive_ReportsPositiveSize()
     {
-        var builder = new GameLaunchSummaryBuilder(new SteamLibraryScanner(new FakeSteamFileSystem(), new FakeSteamPathProvider(null)));
-        var before = builder.Build(_driveRoot, Config);
+        var builder = BuildBuilder(new FakeSteamFileSystem(), null);
 
-        File.WriteAllText(Path.Combine(_driveRoot, "GAME.INI"), "[Game]\nTITLE=Portal 2\nAPPID=400\nPROCESS=portal2.exe\n");
-        var after = builder.Build(_driveRoot, Config);
+        var summary = builder.Build(_driveRoot, Config);
 
-        Assert.NotEqual(before.MediaCrc32, after.MediaCrc32);
+        Assert.True(summary.MediaSizeBytes > 0);
     }
 
     [Fact]
     public void Build_NotAFloppyLetter_ClassifiesAsUsb()
     {
-        var builder = new GameLaunchSummaryBuilder(new SteamLibraryScanner(new FakeSteamFileSystem(), new FakeSteamPathProvider(null)));
+        var builder = BuildBuilder(new FakeSteamFileSystem(), null);
 
         var summary = builder.Build(_driveRoot, Config);
 
@@ -55,7 +46,21 @@ public class GameLaunchSummaryBuilderTests : IDisposable
     }
 
     [Fact]
-    public void Build_GameInstalledOnSteam_ReportsInstalledWithSizeOnDisk()
+    public void Build_GameNotInstalledOnSteam_ReportsNotInstalledAndOmitsInstallOnlyFields()
+    {
+        var builder = BuildBuilder(new FakeSteamFileSystem(), null);
+
+        var summary = builder.Build(_driveRoot, Config);
+
+        Assert.False(summary.IsInstalledOnSteam);
+        Assert.Null(summary.InstalledSizeBytes);
+        Assert.Null(summary.BuildId);
+        Assert.Null(summary.LastUpdatedUtc);
+        Assert.Null(summary.PlaytimeMinutes);
+    }
+
+    [Fact]
+    public void Build_GameInstalledOnSteam_ReportsSizeBuildAndUpdateDate()
     {
         const string manifest = """
             "AppState"
@@ -64,25 +69,83 @@ public class GameLaunchSummaryBuilderTests : IDisposable
                 "name"        "Portal"
                 "installdir"        "Portal"
                 "SizeOnDisk"        "1000"
+                "buildid"        "9988"
+                "LastUpdated"        "1700000000"
             }
             """;
         var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
-        var builder = new GameLaunchSummaryBuilder(new SteamLibraryScanner(fs, new FakeSteamPathProvider(@"C:\Steam")));
+        var builder = BuildBuilder(fs, @"C:\Steam");
 
         var summary = builder.Build(_driveRoot, Config);
 
         Assert.True(summary.IsInstalledOnSteam);
         Assert.Equal(1000, summary.InstalledSizeBytes);
+        Assert.Equal("9988", summary.BuildId);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000).UtcDateTime, summary.LastUpdatedUtc);
     }
 
     [Fact]
-    public void Build_GameNotInstalledOnSteam_ReportsNotInstalled()
+    public void Build_GameInstalledWithKnownOwner_ReadsPlaytimeFromLocalConfig()
     {
-        var builder = new GameLaunchSummaryBuilder(new SteamLibraryScanner(new FakeSteamFileSystem(), new FakeSteamPathProvider(null)));
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "400"
+                "name"        "Portal"
+                "installdir"        "Portal"
+                "LastOwner"        "76561197960278073"
+            }
+            """;
+        const string localConfig = """
+            "UserLocalConfigStore"
+            {
+                "Software"
+                {
+                    "Valve"
+                    {
+                        "Steam"
+                        {
+                            "apps"
+                            {
+                                "400"
+                                {
+                                    "LastPlayed"        "1690000000"
+                                    "Playtime"        "125"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            """;
+        var fs = new FakeSteamFileSystem()
+            .WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest)
+            .WithFile(@"C:\Steam\userdata\12345\config\localconfig.vdf", localConfig);
+        var builder = BuildBuilder(fs, @"C:\Steam");
 
         var summary = builder.Build(_driveRoot, Config);
 
-        Assert.False(summary.IsInstalledOnSteam);
-        Assert.Null(summary.InstalledSizeBytes);
+        Assert.Equal(125, summary.PlaytimeMinutes);
+    }
+
+    [Fact]
+    public void Build_GameInstalledButNoLocalConfig_PlaytimeIsNull()
+    {
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "400"
+                "name"        "Portal"
+                "installdir"        "Portal"
+                "LastOwner"        "76561197960278073"
+            }
+            """;
+        var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
+        var builder = BuildBuilder(fs, @"C:\Steam");
+
+        var summary = builder.Build(_driveRoot, Config);
+
+        Assert.True(summary.IsInstalledOnSteam);
+        Assert.Null(summary.PlaytimeMinutes);
     }
 }

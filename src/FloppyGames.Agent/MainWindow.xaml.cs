@@ -47,8 +47,11 @@ public partial class MainWindow : Window
         _mediaService.MediaRemoved += OnMediaRemoved;
         _mediaService.InvalidMediaDetected += OnInvalidMediaDetected;
 
+        var steamFileSystem = new FileSystemSteamFileSystem();
+        var steamPathProvider = new RegistrySteamPathProvider();
         _summaryBuilder = new GameLaunchSummaryBuilder(
-            new SteamLibraryScanner(new FileSystemSteamFileSystem(), new RegistrySteamPathProvider()));
+            new SteamLibraryScanner(steamFileSystem, steamPathProvider),
+            new SteamPlaytimeReader(steamFileSystem, steamPathProvider));
 
         _sessionManager = new GameSessionManager(_mediaService, new SteamProtocolLauncher(), new Win32ProcessGateway(), _logger);
         _sessionManager.LaunchStarting += OnLaunchStarting;

@@ -4,23 +4,25 @@ using FloppyGames.Core.Steam;
 namespace FloppyGames.Core.Media;
 
 /// <summary>
-/// Apura os dados extra do ecrã de arranque (tamanho e CRC32 do suporte, se o jogo já está
-/// instalado na Steam e o seu tamanho em disco). Pensada para correr fora da thread de UI —
-/// ler de uma disquete física é lento, e procurar na biblioteca Steam envolve I/O.
+/// Apura os dados extra do ecrã de arranque: tamanho do suporte, estado de instalação na Steam
+/// (build, data de atualização, tempo de jogo, última sessão). Pensada para correr fora da thread
+/// de UI — ler de uma disquete física é lento, e procurar na biblioteca Steam envolve I/O.
 /// </summary>
 public sealed class GameLaunchSummaryBuilder
 {
     private readonly SteamLibraryScanner _steamLibraryScanner;
+    private readonly SteamPlaytimeReader _playtimeReader;
 
-    public GameLaunchSummaryBuilder(SteamLibraryScanner steamLibraryScanner)
+    public GameLaunchSummaryBuilder(SteamLibraryScanner steamLibraryScanner, SteamPlaytimeReader playtimeReader)
     {
         _steamLibraryScanner = steamLibraryScanner;
+        _playtimeReader = playtimeReader;
     }
 
     public GameLaunchSummary Build(string driveRoot, GameConfig config)
     {
         var mediaKind = MediaKindClassifier.Classify(driveRoot);
-        var (sizeBytes, crc32) = ComputeMediaFingerprint(driveRoot, config);
+        var mediaSizeBytes = ComputeMediaSizeBytes(driveRoot, config);
 
         InstalledSteamGame? installed = null;
         try
@@ -32,10 +34,31 @@ public sealed class GameLaunchSummaryBuilder
             // Biblioteca Steam momentaneamente inacessível — segue sem o estado de instalação.
         }
 
-        return new GameLaunchSummary(mediaKind, sizeBytes, crc32, installed is not null, installed?.SizeOnDiskBytes);
+        long? playtimeMinutes = null;
+        if (installed?.LastOwnerSteamId64 is { } ownerSteamId64)
+        {
+            try
+            {
+                playtimeMinutes = _playtimeReader.TryGetPlaytimeMinutes(config.AppId, ownerSteamId64);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // localconfig.vdf momentaneamente inacessível — segue sem o tempo de jogo.
+            }
+        }
+
+        return new GameLaunchSummary(
+            mediaKind,
+            mediaSizeBytes,
+            installed is not null,
+            installed?.SizeOnDiskBytes,
+            installed?.BuildId,
+            installed?.LastUpdatedUtc,
+            installed?.LastPlayedUtc,
+            playtimeMinutes);
     }
 
-    private static (long SizeBytes, uint Crc32) ComputeMediaFingerprint(string driveRoot, GameConfig config)
+    private static long ComputeMediaSizeBytes(string driveRoot, GameConfig config)
     {
         var files = new List<string> { Path.Combine(driveRoot, FileSystemDriveInspector.GameIniFileName) };
         if (!string.IsNullOrWhiteSpace(config.Cover))
@@ -44,15 +67,12 @@ public sealed class GameLaunchSummaryBuilder
         }
 
         long totalBytes = 0;
-        var crc = Crc32.InitialState;
 
         foreach (var file in files)
         {
             try
             {
-                var bytes = File.ReadAllBytes(file);
-                totalBytes += bytes.Length;
-                crc = Crc32.Append(crc, bytes);
+                totalBytes += new FileInfo(file).Length;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -60,6 +80,6 @@ public sealed class GameLaunchSummaryBuilder
             }
         }
 
-        return (totalBytes, Crc32.Finalize(crc));
+        return totalBytes;
     }
 }
