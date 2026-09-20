@@ -6,6 +6,7 @@ using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
 using Serilog;
 
@@ -51,7 +52,9 @@ public partial class MainWindow : Window
         var steamPathProvider = new RegistrySteamPathProvider();
         _summaryBuilder = new GameLaunchSummaryBuilder(
             new SteamLibraryScanner(steamFileSystem, steamPathProvider),
-            new SteamPlaytimeReader(steamFileSystem, steamPathProvider));
+            new SteamPlaytimeReader(steamFileSystem, steamPathProvider),
+            new SteamWebApiAchievementsProvider(),
+            new AgentSettingsStore());
 
         _sessionManager = new GameSessionManager(_mediaService, new SteamProtocolLauncher(), new Win32ProcessGateway(), _logger);
         _sessionManager.LaunchStarting += OnLaunchStarting;
@@ -125,7 +128,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task UpdateSplashSummaryAsync(string driveRoot, GameConfig config, SplashWindow splash)
     {
-        var summary = await Task.Run(() => _summaryBuilder.Build(driveRoot, config));
+        var summary = await _summaryBuilder.BuildAsync(driveRoot, config, CancellationToken.None);
 
         Dispatcher.Invoke(() =>
         {

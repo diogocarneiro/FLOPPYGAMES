@@ -1,5 +1,6 @@
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
 using FloppyGames.Core.Tests.Steam;
 
@@ -22,45 +23,60 @@ public class GameLaunchSummaryBuilderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_driveRoot, recursive: true);
 
-    private static GameLaunchSummaryBuilder BuildBuilder(FakeSteamFileSystem fs, string? steamPath) =>
-        new(new SteamLibraryScanner(fs, new FakeSteamPathProvider(steamPath)), new SteamPlaytimeReader(fs, new FakeSteamPathProvider(steamPath)));
+    private GameLaunchSummaryBuilder BuildBuilder(
+        FakeSteamFileSystem fs, string? steamPath, AchievementSummary? achievementsResult = null, string? apiKey = null,
+        FakeSteamAchievementsProvider? achievementsProvider = null)
+    {
+        var settingsStore = new AgentSettingsStore(Path.Combine(_driveRoot, "settings.json"));
+        if (apiKey is not null)
+        {
+            settingsStore.Save(new AgentSettings { SteamWebApiKey = apiKey });
+        }
+
+        return new GameLaunchSummaryBuilder(
+            new SteamLibraryScanner(fs, new FakeSteamPathProvider(steamPath)),
+            new SteamPlaytimeReader(fs, new FakeSteamPathProvider(steamPath)),
+            achievementsProvider ?? new FakeSteamAchievementsProvider(achievementsResult),
+            settingsStore);
+    }
 
     [Fact]
-    public void Build_MediaOnDrive_ReportsPositiveSize()
+    public async Task BuildAsync_MediaOnDrive_ReportsPositiveSize()
     {
         var builder = BuildBuilder(new FakeSteamFileSystem(), null);
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.True(summary.MediaSizeBytes > 0);
     }
 
     [Fact]
-    public void Build_NotAFloppyLetter_ClassifiesAsUsb()
+    public async Task BuildAsync_NotAFloppyLetter_ClassifiesAsUsb()
     {
         var builder = BuildBuilder(new FakeSteamFileSystem(), null);
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.Equal(MediaKind.Usb, summary.MediaKind);
     }
 
     [Fact]
-    public void Build_GameNotInstalledOnSteam_ReportsNotInstalledAndOmitsInstallOnlyFields()
+    public async Task BuildAsync_GameNotInstalledOnSteam_ReportsNotInstalledAndOmitsInstallOnlyFields()
     {
         var builder = BuildBuilder(new FakeSteamFileSystem(), null);
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.False(summary.IsInstalledOnSteam);
         Assert.Null(summary.InstalledSizeBytes);
         Assert.Null(summary.BuildId);
         Assert.Null(summary.LastUpdatedUtc);
         Assert.Null(summary.PlaytimeMinutes);
+        Assert.Null(summary.Achievements);
     }
 
     [Fact]
-    public void Build_GameInstalledOnSteam_ReportsSizeBuildAndUpdateDate()
+    public async Task BuildAsync_GameInstalledOnSteam_ReportsSizeBuildAndUpdateDate()
     {
         const string manifest = """
             "AppState"
@@ -76,7 +92,7 @@ public class GameLaunchSummaryBuilderTests : IDisposable
         var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
         var builder = BuildBuilder(fs, @"C:\Steam");
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.True(summary.IsInstalledOnSteam);
         Assert.Equal(1000, summary.InstalledSizeBytes);
@@ -85,7 +101,7 @@ public class GameLaunchSummaryBuilderTests : IDisposable
     }
 
     [Fact]
-    public void Build_GameInstalledWithKnownOwner_ReadsPlaytimeFromLocalConfig()
+    public async Task BuildAsync_GameInstalledWithKnownOwner_ReadsPlaytimeFromLocalConfig()
     {
         const string manifest = """
             "AppState"
@@ -123,13 +139,13 @@ public class GameLaunchSummaryBuilderTests : IDisposable
             .WithFile(@"C:\Steam\userdata\12345\config\localconfig.vdf", localConfig);
         var builder = BuildBuilder(fs, @"C:\Steam");
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.Equal(125, summary.PlaytimeMinutes);
     }
 
     [Fact]
-    public void Build_GameInstalledButNoLocalConfig_PlaytimeIsNull()
+    public async Task BuildAsync_GameInstalledButNoLocalConfig_PlaytimeIsNull()
     {
         const string manifest = """
             "AppState"
@@ -143,9 +159,66 @@ public class GameLaunchSummaryBuilderTests : IDisposable
         var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
         var builder = BuildBuilder(fs, @"C:\Steam");
 
-        var summary = builder.Build(_driveRoot, Config);
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
 
         Assert.True(summary.IsInstalledOnSteam);
         Assert.Null(summary.PlaytimeMinutes);
+    }
+
+    [Fact]
+    public async Task BuildAsync_InstalledWithApiKeyConfigured_ReportsAchievements()
+    {
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "400"
+                "name"        "Portal"
+                "installdir"        "Portal"
+                "LastOwner"        "76561197960278073"
+            }
+            """;
+        var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
+        var builder = BuildBuilder(fs, @"C:\Steam", achievementsResult: new AchievementSummary(7, 20), apiKey: "TESTKEY");
+
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
+
+        Assert.NotNull(summary.Achievements);
+        Assert.Equal(7, summary.Achievements!.Unlocked);
+        Assert.Equal(20, summary.Achievements.Total);
+    }
+
+    [Fact]
+    public async Task BuildAsync_InstalledWithoutApiKey_NeverCallsAchievementsProvider()
+    {
+        const string manifest = """
+            "AppState"
+            {
+                "appid"        "400"
+                "name"        "Portal"
+                "installdir"        "Portal"
+                "LastOwner"        "76561197960278073"
+            }
+            """;
+        var fs = new FakeSteamFileSystem().WithFile(@"C:\Steam\steamapps\appmanifest_400.acf", manifest);
+        var achievementsProvider = new FakeSteamAchievementsProvider(new AchievementSummary(7, 20));
+        var builder = BuildBuilder(fs, @"C:\Steam", achievementsProvider: achievementsProvider);
+
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
+
+        Assert.Null(summary.Achievements);
+        Assert.Null(achievementsProvider.LastApiKey);
+    }
+
+    [Fact]
+    public async Task BuildAsync_NotInstalled_NeverCallsAchievementsProviderEvenWithApiKey()
+    {
+        var fs = new FakeSteamFileSystem();
+        var achievementsProvider = new FakeSteamAchievementsProvider(new AchievementSummary(7, 20));
+        var builder = BuildBuilder(fs, null, apiKey: "TESTKEY", achievementsProvider: achievementsProvider);
+
+        var summary = await builder.BuildAsync(_driveRoot, Config, CancellationToken.None);
+
+        Assert.Null(summary.Achievements);
+        Assert.Null(achievementsProvider.LastApiKey);
     }
 }

@@ -96,6 +96,7 @@ public partial class SplashWindow : Window
             UpdatedText.Visibility = Visibility.Collapsed;
             PlaytimeText.Visibility = Visibility.Collapsed;
             LastSessionText.Visibility = Visibility.Collapsed;
+            AchievementsText.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -104,6 +105,16 @@ public partial class SplashWindow : Window
         UpdatedText.Text = FormatStatLine("ATUALIZADO", FormatDate(summary.LastUpdatedUtc));
         PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", FormatPlaytime(summary.PlaytimeMinutes));
         LastSessionText.Text = FormatStatLine("ÚLTIMA SESSÃO", FormatDate(summary.LastPlayedUtc));
+
+        if (summary.Achievements is { } achievements)
+        {
+            AchievementsText.Text = FormatStatLine("CONQUISTAS", $"{achievements.Unlocked}/{achievements.Total}");
+            AchievementsText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            AchievementsText.Visibility = Visibility.Collapsed;
+        }
     }
 
     /// <summary>

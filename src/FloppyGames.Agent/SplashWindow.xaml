@@ -76,36 +76,36 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Selo do tipo de suporte -->
-                <DockPanel Grid.Row="0" Margin="0,0,0,22">
-                    <Canvas x:Name="FloppyIcon" DockPanel.Dock="Left" Width="34" Height="34" Visibility="Collapsed">
-                        <Rectangle Width="34" Height="34" Fill="#FF2B2B2B" RadiusX="3" RadiusY="3" />
-                        <Rectangle Canvas.Left="6" Canvas.Top="0" Width="17" Height="11" Fill="#FFC0C0C0" />
-                        <Rectangle Canvas.Left="11" Canvas.Top="2" Width="4" Height="7" Fill="#FF2B2B2B" />
-                        <Rectangle Canvas.Left="4" Canvas.Top="15" Width="26" Height="16" Fill="#FFE8E8E8" />
-                        <Rectangle Canvas.Left="7" Canvas.Top="19" Width="19" Height="2" Fill="#FF9A9A9A" />
-                        <Rectangle Canvas.Left="7" Canvas.Top="24" Width="19" Height="2" Fill="#FF9A9A9A" />
-                    </Canvas>
-                    <Canvas x:Name="UsbIcon" DockPanel.Dock="Left" Width="34" Height="34" Visibility="Collapsed">
-                        <Rectangle Canvas.Left="11" Canvas.Top="1" Width="2" Height="5" Fill="#FFC0C0C0" />
-                        <Rectangle Canvas.Left="17" Canvas.Top="1" Width="2" Height="5" Fill="#FFC0C0C0" />
-                        <Rectangle Canvas.Left="8" Canvas.Top="4" Width="13" Height="8" Fill="#FFC0C0C0" />
-                        <Rectangle Canvas.Left="4" Canvas.Top="11" Width="24" Height="21" Fill="#FF3A6EA5" RadiusX="4" RadiusY="4" />
-                        <Rectangle Canvas.Left="9" Canvas.Top="17" Width="14" Height="5" Fill="#FFE8E8E8" />
-                    </Canvas>
-                    <TextBlock x:Name="MediaKindLabel" FontFamily="Consolas" FontSize="15" FontWeight="Bold"
-                               Foreground="#FF39FF6A" VerticalAlignment="Center" Margin="16,0,0,0" />
-                </DockPanel>
-
-                <TextBlock x:Name="TitleText" Grid.Row="1" FontSize="56" FontWeight="Bold" Foreground="White"
+                <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="56" FontWeight="Bold" Foreground="White"
                            TextWrapping="Wrap" LineHeight="58">
                     <TextBlock.Effect>
                         <DropShadowEffect Color="Black" BlurRadius="18" ShadowDepth="2" Opacity="0.85" />
                     </TextBlock.Effect>
                 </TextBlock>
 
+                <!-- Selo do tipo de suporte, por baixo do nome do jogo -->
+                <DockPanel Grid.Row="1" Margin="0,14,0,0">
+                    <Canvas x:Name="FloppyIcon" DockPanel.Dock="Left" Width="30" Height="30" Visibility="Collapsed">
+                        <Rectangle Width="30" Height="30" Fill="#FF2B2B2B" RadiusX="3" RadiusY="3" />
+                        <Rectangle Canvas.Left="5" Canvas.Top="0" Width="15" Height="10" Fill="#FFC0C0C0" />
+                        <Rectangle Canvas.Left="10" Canvas.Top="2" Width="4" Height="6" Fill="#FF2B2B2B" />
+                        <Rectangle Canvas.Left="4" Canvas.Top="13" Width="22" Height="14" Fill="#FFE8E8E8" />
+                        <Rectangle Canvas.Left="6" Canvas.Top="17" Width="16" Height="2" Fill="#FF9A9A9A" />
+                        <Rectangle Canvas.Left="6" Canvas.Top="21" Width="16" Height="2" Fill="#FF9A9A9A" />
+                    </Canvas>
+                    <Canvas x:Name="UsbIcon" DockPanel.Dock="Left" Width="30" Height="30" Visibility="Collapsed">
+                        <Rectangle Canvas.Left="10" Canvas.Top="1" Width="2" Height="4" Fill="#FFC0C0C0" />
+                        <Rectangle Canvas.Left="15" Canvas.Top="1" Width="2" Height="4" Fill="#FFC0C0C0" />
+                        <Rectangle Canvas.Left="7" Canvas.Top="4" Width="12" Height="7" Fill="#FFC0C0C0" />
+                        <Rectangle Canvas.Left="4" Canvas.Top="10" Width="21" Height="18" Fill="#FF3A6EA5" RadiusX="4" RadiusY="4" />
+                        <Rectangle Canvas.Left="8" Canvas.Top="15" Width="13" Height="4" Fill="#FFE8E8E8" />
+                    </Canvas>
+                    <TextBlock x:Name="MediaKindLabel" FontFamily="Consolas" FontSize="14" FontWeight="Bold"
+                               Foreground="#FF39FF6A" VerticalAlignment="Center" Margin="14,0,0,0" />
+                </DockPanel>
+
                 <TextBlock x:Name="DescriptionText" Grid.Row="2" FontSize="17" Foreground="#FFD2D2D8"
-                           TextWrapping="Wrap" MaxHeight="82" Margin="0,16,0,0" Visibility="Collapsed" />
+                           TextWrapping="Wrap" MaxHeight="82" Margin="0,20,0,0" Visibility="Collapsed" />
 
                 <!-- Painel de estatísticas, no estilo de um terminal -->
                 <Border Grid.Row="4" Background="#B3000000" BorderBrush="#FF2E2E38" BorderThickness="1" CornerRadius="4"
@@ -116,7 +116,9 @@
                         <TextBlock x:Name="BuildText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
                         <TextBlock x:Name="UpdatedText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
                         <TextBlock x:Name="PlaytimeText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
-                        <TextBlock x:Name="LastSessionText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" />
+                        <TextBlock x:Name="LastSessionText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
+                        <TextBlock x:Name="AchievementsText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6"
+                                   Visibility="Collapsed" />
                     </StackPanel>
                 </Border>
 
@@ -143,5 +145,7 @@
         <!-- Marca, discreta, no canto -->
         <TextBlock Text="F L O P P Y G A M E S" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Foreground="#FF4A4A54"
                    HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="72,0,0,20" />
+        <TextBlock Text="© 2026 Diogo Carneiro. Tous droits réservés." FontFamily="Consolas" FontSize="12"
+                   Foreground="#FF4A4A54" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,72,20" />
     </Grid>
 </Window>
