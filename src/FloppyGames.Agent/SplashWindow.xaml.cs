@@ -1,6 +1,5 @@
 using System.IO;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -65,7 +64,7 @@ public partial class SplashWindow : Window
     public void ShowErrorAndAutoClose(string message)
     {
         StatusText.Text = message;
-        StatusText.Foreground = Brushes.OrangeRed;
+        StatusText.Foreground = System.Windows.Media.Brushes.OrangeRed;
         ProgressIndicator.IsIndeterminate = false;
         _autoCloseTimer.Interval = TimeSpan.FromSeconds(5);
         _autoCloseTimer.Start();

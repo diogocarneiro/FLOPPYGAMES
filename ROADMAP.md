@@ -44,12 +44,17 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** fluxo ponta-a-ponta funcional — inserir disquete/pen → jogo abre → remover → jogo fecha.
 
-## Fase 3 — Agent: Bandeja do Sistema e Configuração
+## Fase 3 — Agent: Bandeja do Sistema e Configuração ✅
 
-- [ ] Ícone de bandeja com estado (*idle*, *a carregar*, *jogo em execução*).
-- [ ] Menu de contexto: abrir logs, abrir Label Studio, sair, definições.
-- [ ] Ecrã de definições: caminho da pasta de logs, tempo de *timeout*, som de motor de disquete on/off.
-- [ ] Toggle "Iniciar com o Windows" (escreve/remove chave em `HKCU\...\Run`), refletido de imediato na bandeja.
+- [x] Ícone de bandeja com estado (*idle* cinza, *a carregar* âmbar, *jogo em execução* verde) — `TrayIconController` + `TrayIconFactory`, orientado a eventos do `GameSessionManager` (sem polling), suporta múltiplos jogos em simultâneo (o ícone mostra "a carregar" se houver pelo menos um lançamento em curso, "em execução" se houver pelo menos uma sessão ativa).
+- [x] Menu de contexto: abrir FloppyGames, abrir pasta de logs, abrir Label Studio, definições, sair.
+- [x] Fechar a janela principal já não termina o Agent — esconde para a bandeja (`ShutdownMode=OnExplicitShutdown`); só "Sair" no menu da bandeja encerra de facto (liberta o watcher de mídia e a sessão de jogo).
+- [x] Toggle "Iniciar com o Windows" — `AutostartManager` + `WindowsAutostartRegistry`, escreve/remove `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, sem exigir admin, refletido de imediato no ecrã de Definições.
+- [x] Ecrã de Definições: checkbox de arranque automático + caminho/atalho para a pasta de logs.
+
+**Decisão consciente:** os itens "tempo de *timeout*" e "som de motor de disquete" do plano original ficaram de fora do ecrã de Definições — o timeout já é configurável por jogo via `WatchTimeoutSeconds` no `GAME.INI` (um valor global duplicaria essa configuração sem necessidade), e o som do motor ainda não existe como funcionalidade (só chega na Fase 6). Um controlo na UI sem comportamento real por trás seria um ecrã meio-feito; fica para quando a funcionalidade existir.
+
+**Verificação:** 48/48 testes automatizados (5 novos cobrem `AutostartManager`: ativar, desativar, estado sem valor, desativar sem nunca ter ativado, não interferir com outras entradas do Run). Confirmado por linha de comandos que o Agent arranca e corre sem exceções com o novo código da bandeja; o fluxo de lançamento por trás (que o ícone reflete) já foi validado com hardware real na Fase 2. **Falta confirmação visual** — abrir o Agent numa sessão normal e ver o ícone a aparecer/mudar de cor, o menu de contexto, a janela a esconder-se ao fechar, e "Sair" a encerrar tudo — algo que não consigo verificar sem ecrã.
 
 **Critério de saída:** Agent utilizável sem consola/terminal aberta; toggle de arranque automático funcional sem reinstalar.
 

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using FloppyGames.Core.Launch;
@@ -14,6 +15,9 @@ public partial class MainWindow : Window
     private readonly RemovableGameMediaService _mediaService;
     private readonly GameSessionManager _sessionManager;
     private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
+    private bool _realShutdownRequested;
+
+    public GameSessionManager SessionManager => _sessionManager;
 
     public ObservableCollection<string> StatusLog { get; } = new();
 
@@ -50,6 +54,29 @@ public partial class MainWindow : Window
         AppendStatus("A vigiar unidades amovíveis...");
 
         Closed += OnWindowClosed;
+    }
+
+    /// <summary>
+    /// Fecha a janela para os separadores de estado, mas o Agent continua a vigiar em segundo
+    /// plano — a bandeja do sistema é que dita quando o processo termina de facto.
+    /// </summary>
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_realShutdownRequested)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
+        base.OnClosing(e);
+    }
+
+    /// <summary>Encerramento real do Agent, chamado a partir do menu "Sair" da bandeja.</summary>
+    public void Shutdown()
+    {
+        _realShutdownRequested = true;
+        Close();
     }
 
     private void OnMediaInserted(object? sender, MediaInsertedEventArgs e) =>
