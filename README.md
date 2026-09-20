@@ -106,11 +106,12 @@ Serviço/aplicação de bandeja (*system tray*) que corre em segundo plano. É o
 
 ### 2. FloppyGames Label Studio
 Aplicação de ambiente de trabalho para **criar** as disquetes/pens:
-- Pesquisa de jogos da biblioteca Steam local (lê `AppID`, nome e capa via Steam Web API / cache local do cliente Steam).
-- Geração automática do `GAME.INI`.
-- Download/recorte da capa (formato "front cover" de disquete).
-- Escrita direta do `GAME.INI` + capa para o suporte amovível selecionado.
-- Desenho e impressão do label/autocolante físico da disquete (moldes 3.5").
+- Pesquisa de jogos da biblioteca Steam local — lê `libraryfolders.vdf` + `appmanifest_*.acf` diretamente do disco (sem precisar de *API key* nem autenticação).
+- Sugestão automática do executável a vigiar, a partir da pasta de instalação (o utilizador confirma/corrige).
+- Pré-visualização da capa (descarregada do CDN público da Steam), com escolha manual de imagem local como alternativa.
+- Geração automática do `GAME.INI`, incluindo as opções avançadas (timeout, atraso, encerramento suave).
+- Escrita direta do `GAME.INI` + capa para o suporte amovível selecionado, com validação de espaço e aviso antes de sobrescrever.
+- Desenho e impressão do label físico (impressão direta ou exportação para PNG).
 
 ### 3. Instalador (FloppyGames Setup)
 Instalador único para Windows que:
@@ -149,7 +150,7 @@ GracefulShutdown=true
 | `LaunchDelaySeconds` | Não | Atraso antes do lançamento, para efeito de animação (default 2s). |
 | `GracefulShutdown` | Não | Se `true`, tenta fechar o processo de forma suave antes de forçar. |
 
-> **Nota de capacidade:** uma disquete 3.5" tem tipicamente 1.44 MB. O `GAME.INI` ocupa bytes irrelevantes, mas a `COVER` deve ser uma imagem pequena (JPEG comprimido, poucas dezenas de KB) para deixar espaço de sobra. O Label Studio (Fase 4) vai validar isto antes de escrever para o suporte.
+> **Nota de capacidade:** uma disquete 3.5" tem tipicamente 1.44 MB. O `GAME.INI` ocupa bytes irrelevantes, mas a `COVER` deve ser uma imagem pequena (JPEG comprimido, poucas dezenas de KB) para deixar espaço de sobra. O Label Studio valida o espaço disponível antes de escrever para o suporte.
 
 ## Requisitos
 

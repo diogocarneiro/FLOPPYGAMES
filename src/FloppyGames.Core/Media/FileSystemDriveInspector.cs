@@ -57,4 +57,16 @@ public sealed class FileSystemDriveInspector : IRemovableDriveInspector
         content = null;
         return false;
     }
+
+    public long GetAvailableFreeBytes(string driveRoot)
+    {
+        try
+        {
+            return new DriveInfo(driveRoot).AvailableFreeSpace;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException)
+        {
+            return 0;
+        }
+    }
 }

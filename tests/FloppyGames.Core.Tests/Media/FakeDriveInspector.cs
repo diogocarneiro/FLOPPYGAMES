@@ -7,6 +7,7 @@ internal sealed class FakeDriveInspector : IRemovableDriveInspector
 {
     private readonly Dictionary<string, bool> _removable = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _gameIniContent = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _freeBytes = new(StringComparer.OrdinalIgnoreCase);
 
     public FakeDriveInspector WithRemovableDrive(string driveRoot)
     {
@@ -26,8 +27,17 @@ internal sealed class FakeDriveInspector : IRemovableDriveInspector
         return this;
     }
 
+    public FakeDriveInspector WithFreeBytes(string driveRoot, long freeBytes)
+    {
+        _freeBytes[driveRoot] = freeBytes;
+        return this;
+    }
+
     public bool IsRemovableDrive(string driveRoot) => _removable.GetValueOrDefault(driveRoot);
 
     public bool TryReadGameIni(string driveRoot, out string? content) =>
         _gameIniContent.TryGetValue(driveRoot, out content);
+
+    public long GetAvailableFreeBytes(string driveRoot) =>
+        _freeBytes.GetValueOrDefault(driveRoot, long.MaxValue);
 }

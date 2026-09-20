@@ -12,4 +12,7 @@ public interface IRemovableDriveInspector
 
     /// <summary>Tenta ler o conteúdo do GAME.INI na raiz da unidade.</summary>
     public bool TryReadGameIni(string driveRoot, out string? content);
+
+    /// <summary>Espaço livre, em bytes, disponível na unidade.</summary>
+    public long GetAvailableFreeBytes(string driveRoot);
 }

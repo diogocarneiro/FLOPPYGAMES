@@ -58,15 +58,18 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** Agent utilizável sem consola/terminal aberta; toggle de arranque automático funcional sem reinstalar.
 
-## Fase 4 — Label Studio (Criador de Disquetes)
+## Fase 4 — Label Studio (Criador de Disquetes) ✅
 
-- [ ] Ecrã de pesquisa de jogos da biblioteca Steam local (ler `libraryfolders.vdf` / Steam Web API opcional com *API key* do utilizador).
-- [ ] Pré-visualização da capa (capa Steam *library/header* + *fallback* manual de imagem local).
-- [ ] Geração do `GAME.INI` a partir da seleção (AppID, título, processo sugerido a partir do executável instalado).
-- [ ] Escrita direta para o suporte amovível selecionado (validar espaço, avisar antes de sobrescrever).
-- [ ] Módulo de desenho/impressão do label físico (molde 3.5", exportação PDF/PNG para impressão em autocolante).
+- [x] Ecrã de pesquisa de jogos da biblioteca Steam local — `SteamLibraryScanner` lê `libraryfolders.vdf` (todas as bibliotecas, não só a principal) e cada `appmanifest_*.acf` via um parser VDF (Valve KeyValues) escrito de raiz (`VdfParser`); caixa de pesquisa filtra por nome. API Web da Steam ficou de fora — a leitura local já dá tudo o que é preciso (AppID, título, pasta de instalação) sem exigir *API key* do utilizador.
+- [x] Sugestão do executável a vigiar — `GameExecutableFinder` + `ExecutableSuggester` (heurística pura, testável sem tocar em disco): ignora instaladores/redistribuíveis conhecidos, prefere o nome que corresponde à pasta de instalação. Utilizador confirma/corrige antes de escrever.
+- [x] Pré-visualização da capa — `SteamCdnCoverArtProvider` descarrega a arte vertical (`library_600x900`) do CDN público da Steam, sem autenticação; *fallback* de escolha manual de imagem local.
+- [x] Geração do `GAME.INI` a partir da seleção — `GameIniWriter` (serialização inversa do `GameIniParser`, com teste de *round-trip*), incluindo secção de opções avançadas (timeout, atraso, encerramento suave) editável na UI.
+- [x] Escrita direta para o suporte amovível selecionado — `FloppyMediaWriter`: valida que é amovível, calcula espaço necessário vs. disponível, avisa antes de sobrescrever um GAME.INI já existente.
+- [x] Módulo de desenho/impressão do label físico — `LabelPrintWindow`: pré-visualização quadrada (capa + título), impressão direta via `PrintDialog`/`PrintVisual`, exportação para PNG via `RenderTargetBitmap`. Exportação para PDF ficou de fora — exigiria uma biblioteca de terceiros (WPF não gera PDF nativamente) só para esse formato; impressão direta e PNG já cobrem o caso de uso real (imprimir a etiqueta).
 
-**Critério de saída:** criar uma disquete/pen do zero, sem editar `GAME.INI` à mão, e imprimir o respetivo label.
+**Verificação:** 73/73 testes automatizados (25 novos cobrem `VdfParser`, `SteamLibraryScanner`, `ExecutableSuggester`, `GameExecutableFinder`, `GameIniWriter` e `FloppyMediaWriter`, todos com dublês de teste — nada toca em disco real ou Steam real durante os testes). Confirmado com um script de verificação contra a instalação Steam real desta máquina: encontrou corretamente 3 jogos instalados, incluindo o Counter-Strike 2 (AppID 730) com `cs2.exe` sugerido como processo — o mesmo valor já usado manualmente ao longo deste projeto.
+
+**Critério de saída:** criar uma disquete/pen do zero, sem editar `GAME.INI` à mão, e imprimir o respetivo label. **Falta confirmação visual completa da UI** (não consigo testar cliques/ecrã sem ver o monitor) — o Label Studio arranca sem exceções e a lógica por trás de cada ecrã está validada, mas o percurso ponta-a-ponta na interface (selecionar jogo → escrever → imprimir) precisa de ser confirmado à mão.
 
 ## Fase 5 — Instalador e Distribuição
 
