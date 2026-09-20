@@ -34,6 +34,39 @@ public class GameIniParserTests
     }
 
     [Fact]
+    public void Parse_WithDescription_ReturnsIt()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            APPID=400
+            PROCESS=portal.exe
+            DESCRIPTION=Um puzzle em primeira pessoa com um portal gun.
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Equal("Um puzzle em primeira pessoa com um portal gun.", result.Config!.Description);
+    }
+
+    [Fact]
+    public void Parse_WithoutDescription_IsNull()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            APPID=400
+            PROCESS=portal.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Config!.Description);
+    }
+
+    [Fact]
     public void Parse_LaunchDelayZero_IsValid_MeansLaunchImmediately()
     {
         const string ini = """

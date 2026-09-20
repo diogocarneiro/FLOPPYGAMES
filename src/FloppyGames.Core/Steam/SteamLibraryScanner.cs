@@ -90,8 +90,12 @@ public sealed class SteamLibraryScanner
                 return null;
             }
 
+            var sizeOnDiskBytes = long.TryParse(root.GetString("SizeOnDisk"), out var sizeOnDisk)
+                ? sizeOnDisk
+                : (long?)null;
+
             var installPath = Path.Combine(steamAppsDir, "common", installDir);
-            return new InstalledSteamGame(appId, name, installDir, installPath);
+            return new InstalledSteamGame(appId, name, installDir, installPath, sizeOnDiskBytes);
         }
         catch (FormatException)
         {

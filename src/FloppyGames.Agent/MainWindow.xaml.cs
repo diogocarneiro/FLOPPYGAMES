@@ -2,9 +2,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Steam;
 using Serilog;
 
 namespace FloppyGames.Agent;
@@ -14,6 +16,7 @@ public partial class MainWindow : Window
     private readonly ILogger _logger;
     private readonly RemovableGameMediaService _mediaService;
     private readonly GameSessionManager _sessionManager;
+    private readonly GameLaunchSummaryBuilder _summaryBuilder;
     private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
     private bool _realShutdownRequested;
 
@@ -43,6 +46,9 @@ public partial class MainWindow : Window
         _mediaService.MediaInserted += OnMediaInserted;
         _mediaService.MediaRemoved += OnMediaRemoved;
         _mediaService.InvalidMediaDetected += OnInvalidMediaDetected;
+
+        _summaryBuilder = new GameLaunchSummaryBuilder(
+            new SteamLibraryScanner(new FileSystemSteamFileSystem(), new RegistrySteamPathProvider()));
 
         _sessionManager = new GameSessionManager(_mediaService, new SteamProtocolLauncher(), new Win32ProcessGateway(), _logger);
         _sessionManager.LaunchStarting += OnLaunchStarting;
@@ -93,8 +99,10 @@ public partial class MainWindow : Window
         {
             var splash = new SplashWindow();
             var coverPath = e.Config.Cover is null ? null : Path.Combine(e.DriveRoot, e.Config.Cover);
-            splash.SetGame(e.Config.Title, coverPath);
+            var mediaKind = MediaKindClassifier.Classify(e.DriveRoot);
+            splash.SetGame(e.Config.Title, e.Config.Description, coverPath, mediaKind);
             splash.SetStatus("A abrir a Steam...");
+            splash.StartProgress(TimeSpan.FromSeconds(e.Config.LaunchDelaySeconds + e.Config.WatchTimeoutSeconds));
             splash.Show();
 
             if (_splashWindows.Remove(e.DriveRoot, out var previous))
@@ -104,7 +112,26 @@ public partial class MainWindow : Window
 
             _splashWindows[e.DriveRoot] = splash;
             AppendStatus($"A lançar {e.Config.Title}...");
+
+            _ = UpdateSplashSummaryAsync(e.DriveRoot, e.Config, splash);
         });
+
+    /// <summary>
+    /// Tamanho/CRC32/estado de instalação demoram a apurar (I/O num suporte que pode ser lento),
+    /// por isso correm em segundo plano e só atualizam a splash se ela ainda for a atual para esta unidade.
+    /// </summary>
+    private async Task UpdateSplashSummaryAsync(string driveRoot, GameConfig config, SplashWindow splash)
+    {
+        var summary = await Task.Run(() => _summaryBuilder.Build(driveRoot, config));
+
+        Dispatcher.Invoke(() =>
+        {
+            if (_splashWindows.TryGetValue(driveRoot, out var current) && ReferenceEquals(current, splash))
+            {
+                splash.SetSummary(summary);
+            }
+        });
+    }
 
     private void OnGameLaunched(object? sender, GameLaunchedEventArgs e) =>
         Dispatcher.Invoke(() =>

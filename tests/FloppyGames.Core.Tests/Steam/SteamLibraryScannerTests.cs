@@ -45,6 +45,30 @@ public class SteamLibraryScannerTests
         Assert.Equal(730, game.AppId);
         Assert.Equal("Counter-Strike 2", game.Name);
         Assert.Equal(@"C:\Steam\steamapps\common\Counter-Strike Global Offensive", game.InstallPath);
+        Assert.Null(game.SizeOnDiskBytes);
+    }
+
+    [Fact]
+    public void ScanInstalledGames_ManifestWithSizeOnDisk_ParsesIt()
+    {
+        const string manifestWithSize = """
+            "AppState"
+            {
+                "appid"        "730"
+                "name"        "Counter-Strike 2"
+                "installdir"        "Counter-Strike Global Offensive"
+                "SizeOnDisk"        "68719476736"
+            }
+            """;
+
+        var fs = new FakeSteamFileSystem()
+            .WithFile(@"C:\Steam\steamapps\appmanifest_730.acf", manifestWithSize);
+        var scanner = new SteamLibraryScanner(fs, new FakeSteamPathProvider(@"C:\Steam"));
+
+        var games = scanner.ScanInstalledGames();
+
+        var game = Assert.Single(games);
+        Assert.Equal(68719476736L, game.SizeOnDiskBytes);
     }
 
     [Fact]

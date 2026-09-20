@@ -83,6 +83,7 @@ public partial class MainWindow : Window
         TitleBox.Text = game.Name;
         AppIdText.Text = game.AppId.ToString();
         ProcessBox.Text = _executableFinder.FindSuggestedExecutable(game.InstallPath) ?? string.Empty;
+        DescriptionBox.Text = string.Empty;
         WriteStatusText.Text = string.Empty;
 
         _ = LoadCoverAsync(game.AppId);
@@ -219,6 +220,7 @@ public partial class MainWindow : Window
             AppId = appId,
             Process = ProcessBox.Text.Trim(),
             Cover = _coverBytes is not null ? _coverFileName : null,
+            Description = string.IsNullOrWhiteSpace(DescriptionBox.Text) ? null : DescriptionBox.Text.Trim(),
             WatchTimeoutSeconds = watchTimeout,
             LaunchDelaySeconds = launchDelay,
             GracefulShutdown = GracefulShutdownBox.IsChecked == true,

@@ -13,6 +13,7 @@ public class GameIniWriterTests
             AppId = 730,
             Process = "cs2.exe",
             Cover = "cover.jpg",
+            Description = "FPS competitivo 5v5.",
             WatchTimeoutSeconds = 45,
             LaunchDelaySeconds = 3,
             GracefulShutdown = false,
@@ -33,6 +34,16 @@ public class GameIniWriterTests
         var ini = GameIniWriter.Write(config);
 
         Assert.DoesNotContain("COVER=", ini);
+    }
+
+    [Fact]
+    public void Write_WithoutDescription_OmitsDescriptionLine()
+    {
+        var config = new GameConfig { Title = "Portal", AppId = 400, Process = "portal.exe", Description = null };
+
+        var ini = GameIniWriter.Write(config);
+
+        Assert.DoesNotContain("DESCRIPTION=", ini);
     }
 
     [Fact]

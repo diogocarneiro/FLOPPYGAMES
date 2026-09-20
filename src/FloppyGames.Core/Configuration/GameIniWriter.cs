@@ -18,6 +18,11 @@ public static class GameIniWriter
             sb.AppendLine($"COVER={config.Cover}");
         }
 
+        if (config.Description is not null)
+        {
+            sb.AppendLine($"DESCRIPTION={config.Description}");
+        }
+
         sb.AppendLine();
         sb.AppendLine("[Options]");
         sb.AppendLine($"WatchTimeoutSeconds={config.WatchTimeoutSeconds}");

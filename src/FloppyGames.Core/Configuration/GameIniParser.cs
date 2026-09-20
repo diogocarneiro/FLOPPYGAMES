@@ -27,6 +27,7 @@ public static class GameIniParser
         var appId = RequirePositiveInt(game, "APPID", errors);
 
         var cover = game?.GetValueOrDefault("COVER");
+        var description = game?.GetValueOrDefault("DESCRIPTION");
 
         var watchTimeoutSeconds = OptionalPositiveInt(options, "WatchTimeoutSeconds", 30, errors);
         var launchDelaySeconds = OptionalNonNegativeInt(options, "LaunchDelaySeconds", 2, errors);
@@ -43,6 +44,7 @@ public static class GameIniParser
             AppId = appId!.Value,
             Process = process!,
             Cover = string.IsNullOrWhiteSpace(cover) ? null : cover,
+            Description = string.IsNullOrWhiteSpace(description) ? null : description,
             WatchTimeoutSeconds = watchTimeoutSeconds,
             LaunchDelaySeconds = launchDelaySeconds,
             GracefulShutdown = gracefulShutdown,

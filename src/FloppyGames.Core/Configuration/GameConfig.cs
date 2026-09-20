@@ -13,6 +13,8 @@ public sealed record GameConfig
 
     public string? Cover { get; init; }
 
+    public string? Description { get; init; }
+
     public int WatchTimeoutSeconds { get; init; } = 30;
 
     public int LaunchDelaySeconds { get; init; } = 2;

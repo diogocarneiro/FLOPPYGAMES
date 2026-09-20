@@ -43,6 +43,10 @@
                 <TextBlock Text="Processo (executável a vigiar)" FontWeight="Bold" Margin="0,0,0,4" />
                 <TextBox x:Name="ProcessBox" Margin="0,0,0,12" />
 
+                <TextBlock Text="Descrição (opcional, mostrada no ecrã de arranque)" FontWeight="Bold" Margin="0,0,0,4" />
+                <TextBox x:Name="DescriptionBox" Margin="0,0,0,12" Height="54"
+                         TextWrapping="Wrap" AcceptsReturn="False" VerticalScrollBarVisibility="Auto" />
+
                 <Expander Header="Opções avançadas" Margin="0,0,0,12">
                     <StackPanel Margin="0,8,0,0">
                         <Grid>

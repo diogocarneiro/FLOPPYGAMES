@@ -79,7 +79,7 @@ Um segundo componente, o `FloppyGames Label Studio`, permite criar as disquetes:
 2. **Deteção da mídia** — o agente combina duas fontes: eventos de sistema (WMI) para quando um volume aparece/desaparece (pens USB), e uma sondagem leve e dedicada às letras de unidade candidatas a drive de disquetes, porque o Windows **não notifica de forma fiável** a troca de disco dentro de uma drive já ligada — ao contrário de uma pen, a letra da drive de disquetes mantém-se atribuída, só o estado "pronta" muda consoante haja ou não disco lá dentro. Ver [nota técnica](#nota-técnica-deteção-de-disquetes) abaixo.
 3. **Leitura do `GAME.INI`** — valida se a raiz do suporte contém um `GAME.INI` bem formado; ignora o suporte caso contrário.
 4. **Carregamento da capa** — lê a imagem referenciada em `COVER=` a partir do próprio suporte.
-5. **Animação** — mostra uma janela de splash a fingir o "acesso ao disco" (barra de progresso, som opcional de motor de disquete).
+5. **Animação** — mostra uma janela de splash com a capa do jogo como wallpaper desfocado, título, `DESCRIPTION`, ícone do tipo de suporte (disquete/USB), tamanho e CRC32 do próprio suporte, estado "Instalado: Sim/Não" (e tamanho em disco, se instalado) apurado na biblioteca Steam local, e uma barra de progresso real de 0% a 100% — avança em função do atraso/timeout configurados, e só atinge 100% quando o processo do jogo é mesmo confirmado.
 6. **Execução do comando Steam** — invoca `steam://run/<APPID>` via `ShellExecute`, deixando o cliente Steam tratar do lançamento/atualização do jogo.
 7. **Confirmação do processo** — sondagem da lista de processos até detetar `PROCESS` (com timeout configurável); fecha a splash quando confirmado.
 8. **Vigilância** — o agente mantém-se a monitorizar o par (suporte inserido ↔ processo vivo).
@@ -130,6 +130,7 @@ TITLE=Half-Life 2
 APPID=220
 PROCESS=hl2.exe
 COVER=cover.jpg
+DESCRIPTION=Regressa a City 17 numa revolta contra o Combine.
 
 [Options]
 ; tempo máximo (segundos) à espera que o processo do jogo apareça
@@ -146,6 +147,7 @@ GracefulShutdown=true
 | `APPID` | Sim | AppID da Steam usado em `steam://run/APPID`. |
 | `PROCESS` | Sim | Nome do executável a vigiar e a terminar na remoção do disquete. |
 | `COVER` | Não | Caminho relativo à capa (na raiz do suporte). |
+| `DESCRIPTION` | Não | Frase curta (uma linha) mostrada no ecrã de arranque, por baixo do título. |
 | `WatchTimeoutSeconds` | Não | Timeout da confirmação de arranque (default 30s). |
 | `LaunchDelaySeconds` | Não | Atraso antes do lançamento, para efeito de animação (default 2s). |
 | `GracefulShutdown` | Não | Se `true`, tenta fechar o processo de forma suave antes de forçar. |
