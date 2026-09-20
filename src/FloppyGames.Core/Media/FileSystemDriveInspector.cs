@@ -1,9 +1,14 @@
+using System.Threading;
+
 namespace FloppyGames.Core.Media;
 
 /// <summary>Implementação real de <see cref="IRemovableDriveInspector"/> sobre o sistema de ficheiros.</summary>
 public sealed class FileSystemDriveInspector : IRemovableDriveInspector
 {
     public const string GameIniFileName = "GAME.INI";
+
+    private const int MaxReadAttempts = 3;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(300);
 
     public bool IsRemovableDrive(string driveRoot)
     {
@@ -21,21 +26,35 @@ public sealed class FileSystemDriveInspector : IRemovableDriveInspector
     {
         var path = Path.Combine(driveRoot, GameIniFileName);
 
-        try
+        // Disquetes físicas têm um motor mecânico que precisa de um instante para estabilizar
+        // depois de o Windows reportar a unidade como pronta — sem retry, a primeira leitura
+        // falha frequentemente com IOException em hardware real.
+        for (var attempt = 1; attempt <= MaxReadAttempts; attempt++)
         {
-            if (!File.Exists(path))
+            try
             {
-                content = null;
-                return false;
-            }
+                if (!File.Exists(path))
+                {
+                    content = null;
+                    return false;
+                }
 
-            content = File.ReadAllText(path);
-            return true;
+                content = File.ReadAllText(path);
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                if (attempt == MaxReadAttempts)
+                {
+                    content = null;
+                    return false;
+                }
+
+                Thread.Sleep(RetryDelay);
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            content = null;
-            return false;
-        }
+
+        content = null;
+        return false;
     }
 }

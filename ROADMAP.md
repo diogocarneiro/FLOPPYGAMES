@@ -12,17 +12,21 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** `FloppyGames.Core` compila, com parser de `GAME.INI` testado (casos válidos, inválidos, campos opcionais em falta).
 
-## Fase 1 — Agent: Deteção de Mídia ✅ (pendente apenas o teste manual com hardware)
+## Fase 1 — Agent: Deteção de Mídia ✅
 
-- [x] Implementar `IRemovableMediaWatcher` — decisão: WMI (`Win32_VolumeChangeEvent`) em vez de `RegisterDeviceNotification`/`WM_DEVICECHANGE`, por não exigir um `HWND`/message loop, o que mantém o `Core` livre de dependências de UI e testável.
+**Disquetes reais são o suporte principal do projeto; pens USB são um extra.** Isto exigiu uma decisão de arquitetura: o Windows deteta por evento quando uma pen aparece/desaparece, mas **não** deteta de forma fiável a troca de disco dentro de uma drive de disquetes já ligada (a letra de unidade mantém-se atribuída, só o estado "pronta" muda). Ver [nota técnica no README](README.md#nota-técnica-deteção-de-disquetes).
+
+- [x] Implementar `IRemovableMediaWatcher` para pens USB — decisão: WMI (`Win32_VolumeChangeEvent`) em vez de `RegisterDeviceNotification`/`WM_DEVICECHANGE`, por não exigir um `HWND`/message loop, o que mantém o `Core` livre de dependências de UI e testável.
+- [x] Implementar `PollingFloppyDriveWatcher` para disquetes reais — sondagem leve (~1.5s) de `DriveInfo.IsReady` nas letras candidatas (`A:\`, `B:\` por omissão), única exceção deliberada ao princípio "sem polling", por ser a única forma fiável de detetar a troca de disco numa drive já montada.
+- [x] `CompositeRemovableMediaWatcher` funde as duas fontes num único `IRemovableMediaWatcher`, para o resto do sistema não distinguir a origem.
 - [x] Filtrar apenas unidades amovíveis (`DriveType.Removable`), ignorar discos fixos e óticos — em `FileSystemDriveInspector` + `GameMediaScanner`.
-- [x] Validar presença de `GAME.INI` na raiz do volume recém-inserido.
-- [x] Emitir eventos internos `MediaInserted` / `MediaRemoved` / `InvalidMediaDetected` via `RemovableGameMediaService`, com o `GameConfig` sempre disponível (também no evento de remoção, para o Agent saber que processo terminar sem estado próprio).
-- [ ] Testes de integração manuais com pen USB real (requer hardware do utilizador — ver instruções abaixo). Real floppy fica para a Fase 6.
+- [x] Validar presença de `GAME.INI` na raiz do volume recém-inserido, com retry de leitura (disquetes reais têm latência mecânica de arranque do motor).
+- [x] Emitir eventos internos `MediaInserted` / `MediaRemoved` / `InvalidMediaDetected` via `RemovableGameMediaService`, com o `GameConfig` sempre disponível (também no evento de remoção, para o Agent saber que processo terminar sem estado próprio) e deduplicação/lock contra deteções concorrentes das duas fontes.
+- [x] Testado manualmente com hardware real — pen USB e disquete/drive real, ambas reconhecidas corretamente nos logs.
 
-**Como testar manualmente:** correr `dotnet run --project src/FloppyGames.Agent`, inserir uma pen USB com um `GAME.INI` válido na raiz — a janela e o ficheiro `%LOCALAPPDATA%\FloppyGames\logs\Agent-*.log` devem mostrar "Disquete reconhecida"; ao remover, deve aparecer "Disquete removida".
+**Como testar manualmente:** correr `dotnet run --project src/FloppyGames.Agent`, inserir um suporte com um `GAME.INI` válido na raiz — a janela e o ficheiro `%LOCALAPPDATA%\FloppyGames\logs\Agent-*.log` devem mostrar "Disquete reconhecida"; ao remover, deve aparecer "Disquete removida".
 
-**Critério de saída:** inserir/remover uma pen USB com `GAME.INI` gera logs corretos no Agent, sem *polling*.
+**Critério de saída:** inserir/remover uma disquete real (ou pen USB) com `GAME.INI` gera logs corretos no Agent, sem eventos duplicados. ✅ Verificado.
 
 ## Fase 2 — Agent: Lançamento e Vigilância
 
@@ -67,7 +71,6 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 ## Fase 6 — Polimento e Extras (Stretch Goals)
 
-- [ ] Suporte a leitores de disquete físicos reais (3.5", via drive USB legado) como alternativa às pens.
 - [ ] Som de motor de disquete a tocar durante a animação de loading (efeito opcional).
 - [ ] Animação CRT/scanlines configurável na splash.
 - [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
@@ -79,7 +82,7 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 ## Princípios de Engenharia a Manter em Todas as Fases
 
-- **Sem *polling* agressivo** — usar sempre notificações do sistema (`WM_DEVICECHANGE`, `WMI`) em vez de *loops* a verificar unidades.
+- **Sem *polling* agressivo** — usar sempre notificações do sistema (`WMI`) em vez de *loops* a verificar unidades. Única exceção deliberada e documentada: `PollingFloppyDriveWatcher`, confinado a 1-2 letras de unidade candidatas a disquete, porque não há alternativa fiável no Windows para detetar troca de disco numa drive já montada.
 - **Falhas silenciosas nunca** — qualquer erro no fluxo (AppID inválido, Steam não instalado, timeout) tem de ser visível na bandeja/logs, nunca engolido.
 - **Zero-admin por defeito** — toggle de arranque automático e configuração vivem em `HKCU`, não exigem elevação.
 - **Idempotência do instalador** — instalar/desinstalar/reinstalar repetidamente nunca deve deixar entradas órfãs no Registo.

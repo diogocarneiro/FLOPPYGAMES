@@ -15,6 +15,7 @@ public sealed class RemovableGameMediaService : IDisposable
     private readonly GameMediaScanner _scanner;
     private readonly ILogger _logger;
     private readonly Dictionary<string, GameConfig> _activeMedia = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _stateLock = new();
 
     public RemovableGameMediaService(IRemovableMediaWatcher watcher, GameMediaScanner scanner, ILogger logger)
     {
@@ -38,43 +39,57 @@ public sealed class RemovableGameMediaService : IDisposable
 
     private void OnDriveArrived(object? sender, string driveRoot)
     {
-        var result = _scanner.Scan(driveRoot);
-
-        switch (result.Status)
+        // As duas fontes de deteção (WMI + sondagem de disquete) correm em threads separadas
+        // e podem invocar este handler em simultâneo para a mesma unidade — o lock garante que
+        // a verificação "já ativa?" e a escrita em _activeMedia acontecem atomicamente.
+        lock (_stateLock)
         {
-            case GameMediaScanStatus.Valid:
-                _activeMedia[driveRoot] = result.Config!;
-                _logger.Information(
-                    "Disquete reconhecida em {Drive}: {Title} (AppID {AppId}).",
-                    driveRoot, result.Config!.Title, result.Config.AppId);
-                MediaInserted?.Invoke(this, new MediaInsertedEventArgs(driveRoot, result.Config));
-                break;
+            if (_activeMedia.ContainsKey(driveRoot))
+            {
+                return;
+            }
 
-            case GameMediaScanStatus.NotRemovable:
-                // Unidade fixa/ótica: não é um suporte FloppyGames, ignorar sem registar ruído nos logs.
-                break;
+            var result = _scanner.Scan(driveRoot);
 
-            case GameMediaScanStatus.NoGameIni:
-                _logger.Debug("Volume amovível em {Drive} sem GAME.INI — ignorado.", driveRoot);
-                break;
+            switch (result.Status)
+            {
+                case GameMediaScanStatus.Valid:
+                    _activeMedia[driveRoot] = result.Config!;
+                    _logger.Information(
+                        "Disquete reconhecida em {Drive}: {Title} (AppID {AppId}).",
+                        driveRoot, result.Config!.Title, result.Config.AppId);
+                    MediaInserted?.Invoke(this, new MediaInsertedEventArgs(driveRoot, result.Config));
+                    break;
 
-            case GameMediaScanStatus.InvalidGameIni:
-                _logger.Warning(
-                    "GAME.INI inválido em {Drive}: {Errors}", driveRoot, string.Join(" | ", result.Errors));
-                InvalidMediaDetected?.Invoke(this, new InvalidMediaEventArgs(driveRoot, result.Errors));
-                break;
+                case GameMediaScanStatus.NotRemovable:
+                    // Unidade fixa/ótica: não é um suporte FloppyGames, ignorar sem registar ruído nos logs.
+                    break;
+
+                case GameMediaScanStatus.NoGameIni:
+                    _logger.Debug("Volume amovível em {Drive} sem GAME.INI — ignorado.", driveRoot);
+                    break;
+
+                case GameMediaScanStatus.InvalidGameIni:
+                    _logger.Warning(
+                        "GAME.INI inválido em {Drive}: {Errors}", driveRoot, string.Join(" | ", result.Errors));
+                    InvalidMediaDetected?.Invoke(this, new InvalidMediaEventArgs(driveRoot, result.Errors));
+                    break;
+            }
         }
     }
 
     private void OnDriveRemoved(object? sender, string driveRoot)
     {
-        if (!_activeMedia.Remove(driveRoot, out var config))
+        lock (_stateLock)
         {
-            return;
-        }
+            if (!_activeMedia.Remove(driveRoot, out var config))
+            {
+                return;
+            }
 
-        _logger.Information("Disquete removida de {Drive}: {Title}.", driveRoot, config.Title);
-        MediaRemoved?.Invoke(this, new MediaRemovedEventArgs(driveRoot, config));
+            _logger.Information("Disquete removida de {Drive}: {Title}.", driveRoot, config.Title);
+            MediaRemoved?.Invoke(this, new MediaRemovedEventArgs(driveRoot, config));
+        }
     }
 
     public void Dispose()

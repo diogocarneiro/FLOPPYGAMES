@@ -2,7 +2,9 @@
 
 > Reviver o ritual de inserir uma disquete — e ver um jogo Steam a arrancar.
 
-FloppyGames é um sistema para Windows que liga um suporte físico nostálgico (disquete 3.5", ou uma pen USB formatada para simular uma) à tua biblioteca Steam. Insere o suporte, vê a animação de carregamento, e o jogo arranca. Remove o suporte, e o jogo fecha-se sozinho — como se estivesses a tirar a cassete.
+FloppyGames é um sistema para Windows que liga uma **disquete física 3.5" real** à tua biblioteca Steam. Insere a disquete numa drive USB de disquetes, vê a animação de carregamento, e o jogo arranca. Remove a disquete, e o jogo fecha-se sozinho — como se estivesses a tirar a cassete.
+
+O suporte a **pen USB dedicada** existe como alternativa extra — útil para quem não tem (ou não quer arriscar) uma drive de disquetes física, mas o suporte principal e obrigatório do projeto são disquetes reais.
 
 ## Índice
 
@@ -73,8 +75,8 @@ Um segundo componente, o `FloppyGames Label Studio`, permite criar as disquetes:
 
 ### Detalhe de cada etapa
 
-1. **Inserção do disquete** — o utilizador insere o suporte físico (disquete real via leitor USB, ou pen USB dedicada).
-2. **Deteção da mídia** — o agente recebe uma notificação de novo volume amovível (sem *polling* agressivo).
+1. **Inserção do disquete** — o utilizador insere uma disquete 3.5" real numa drive USB de disquetes (ou, em alternativa, uma pen USB dedicada).
+2. **Deteção da mídia** — o agente combina duas fontes: eventos de sistema (WMI) para quando um volume aparece/desaparece (pens USB), e uma sondagem leve e dedicada às letras de unidade candidatas a drive de disquetes, porque o Windows **não notifica de forma fiável** a troca de disco dentro de uma drive já ligada — ao contrário de uma pen, a letra da drive de disquetes mantém-se atribuída, só o estado "pronta" muda consoante haja ou não disco lá dentro. Ver [nota técnica](#nota-técnica-deteção-de-disquetes) abaixo.
 3. **Leitura do `GAME.INI`** — valida se a raiz do suporte contém um `GAME.INI` bem formado; ignora o suporte caso contrário.
 4. **Carregamento da capa** — lê a imagem referenciada em `COVER=` a partir do próprio suporte.
 5. **Animação** — mostra uma janela de splash a fingir o "acesso ao disco" (barra de progresso, som opcional de motor de disquete).
@@ -83,6 +85,19 @@ Um segundo componente, o `FloppyGames Label Studio`, permite criar as disquetes:
 8. **Vigilância** — o agente mantém-se a monitorizar o par (suporte inserido ↔ processo vivo).
 9. **Remoção do disquete** — deteção de remoção do volume.
 10. **Encerramento automático** — termina o processo configurado em `PROCESS` (kill "gentil" com `WM_CLOSE`, escalando para `TerminateProcess` se necessário), devolvendo o sistema ao estado de repouso.
+
+### Nota técnica: deteção de disquetes
+
+Uma pen USB e uma disquete comportam-se de forma muito diferente aos olhos do Windows:
+
+- **Pen USB** — inserir/remover a pen faz a letra de unidade inteira aparecer/desaparecer. O Windows notifica isto por evento (`WMI Win32_VolumeChangeEvent`), sem necessidade de sondagem.
+- **Disquete** — a drive USB de disquetes, uma vez ligada, mantém sempre a mesma letra atribuída (tipicamente `A:\`). Trocar o disco lá dentro **não** gera o mesmo evento de sistema de forma fiável; o que muda é apenas se o Windows reporta a unidade como "pronta" (`DriveInfo.IsReady`). Isto é uma limitação conhecida — o próprio Explorador de Ficheiros do Windows por vezes falha a detetar uma troca de disquete sem um refresh manual.
+
+Por isso, o Agent combina as duas fontes num único watcher composto:
+- `WmiRemovableMediaWatcher` — eventos de sistema, cobre pens USB.
+- `PollingFloppyDriveWatcher` — sondagem leve (≈1.5s) das letras candidatas a drive de disquetes (`A:\`, `B:\` por omissão), cobre a troca de disco físico.
+
+É a única exceção deliberada ao princípio "sem *polling* agressivo": está confinada a 1-2 letras de unidade específicas, a um intervalo modesto, e existe porque não há alternativa fiável no Windows para este caso.
 
 ## Componentes do Projeto
 
@@ -134,11 +149,13 @@ GracefulShutdown=true
 | `LaunchDelaySeconds` | Não | Atraso antes do lançamento, para efeito de animação (default 2s). |
 | `GracefulShutdown` | Não | Se `true`, tenta fechar o processo de forma suave antes de forçar. |
 
+> **Nota de capacidade:** uma disquete 3.5" tem tipicamente 1.44 MB. O `GAME.INI` ocupa bytes irrelevantes, mas a `COVER` deve ser uma imagem pequena (JPEG comprimido, poucas dezenas de KB) para deixar espaço de sobra. O Label Studio (Fase 4) vai validar isto antes de escrever para o suporte.
+
 ## Requisitos
 
 - Windows 10/11 (x64).
 - Cliente Steam instalado e autenticado.
-- Leitor de disquetes USB **ou** pen USB dedicada por jogo.
+- **Drive de disquetes 3.5" USB** (suporte principal) — ou, em alternativa, uma pen USB dedicada por jogo.
 - .NET 10 Desktop Runtime (incluído no instalador).
 
 ## Instalação
@@ -182,7 +199,7 @@ FLOPPYGAMES/
 | Camada | Escolha | Justificação |
 |---|---|---|
 | Agent + Label Studio | C# / .NET 10 (WPF) | Interop Win32 maduro (`RegisterDeviceNotification`, `Process`), UI nativa rápida a desenvolver, *single-file publish*, versão LTS mais recente disponível. |
-| Deteção de mídia | `WM_DEVICECHANGE` + `WMI (Win32_VolumeChangeEvent)` | Sem *polling*, reação imediata à inserção/remoção. |
+| Deteção de mídia | `WMI (Win32_VolumeChangeEvent)` + sondagem dedicada para disquetes | Eventos para pens USB (sem *polling*); sondagem leve e confinada a `A:\`/`B:\` para troca de disco em drives de disquete, onde o Windows não notifica por evento. |
 | Lançamento Steam | `Process.Start("steam://run/<APPID>")` | Delega em Steam a validação/atualização do jogo. |
 | Instalador | Inno Setup | Leve, scriptável, suporta tarefas opcionais (arranque automático). |
 | Persistência de config | `appsettings.json` + Registo do Windows (para o toggle de arranque) | Simples, sem dependência de base de dados. |

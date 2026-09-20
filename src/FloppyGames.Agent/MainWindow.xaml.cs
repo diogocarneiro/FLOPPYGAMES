@@ -21,7 +21,13 @@ public partial class MainWindow : Window
         _logger = LoggingBootstrapper.CreateLogger("Agent");
         _logger.Information("FloppyGames Agent iniciado.");
 
-        var watcher = new WmiRemovableMediaWatcher(_logger);
+        // Duas fontes de deteção fundidas: WMI para pens USB (letra de unidade aparece/desaparece)
+        // e sondagem dedicada para disquetes (a letra fica atribuída, só o disco lá dentro muda).
+        var watcher = new CompositeRemovableMediaWatcher(new IRemovableMediaWatcher[]
+        {
+            new WmiRemovableMediaWatcher(_logger),
+            new PollingFloppyDriveWatcher(PollingFloppyDriveWatcher.DefaultCandidateDriveRoots, new DriveInfoReadinessProbe(), _logger),
+        });
         var inspector = new FileSystemDriveInspector();
         var scanner = new GameMediaScanner(inspector);
         _mediaService = new RemovableGameMediaService(watcher, scanner, _logger);

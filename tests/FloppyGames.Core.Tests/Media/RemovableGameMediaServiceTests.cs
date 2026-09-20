@@ -1,3 +1,4 @@
+using System.Threading;
 using FloppyGames.Core.Media;
 using Serilog.Core;
 
@@ -46,6 +47,37 @@ public class RemovableGameMediaServiceTests
         Assert.NotNull(received);
         Assert.Equal(DriveRoot, received!.DriveRoot);
         Assert.Equal("Portal", received.Config.Title);
+    }
+
+    [Fact]
+    public void DriveArrived_RaisedTwiceForSameDrive_RaisesMediaInsertedOnlyOnce()
+    {
+        var inspector = new FakeDriveInspector().WithRemovableDrive(DriveRoot).WithGameIni(DriveRoot, ValidIni);
+        var (watcher, service) = CreateService(inspector);
+
+        var insertedCount = 0;
+        service.MediaInserted += (_, _) => insertedCount++;
+
+        // Simula as duas fontes de deteção (WMI + sondagem de disquete) a reportarem a mesma unidade.
+        watcher.RaiseArrived(DriveRoot);
+        watcher.RaiseArrived(DriveRoot);
+
+        Assert.Equal(1, insertedCount);
+    }
+
+    [Fact]
+    public async Task DriveArrived_RaisedConcurrentlyForSameDrive_RaisesMediaInsertedExactlyOnce()
+    {
+        var inspector = new FakeDriveInspector().WithRemovableDrive(DriveRoot).WithGameIni(DriveRoot, ValidIni);
+        var (watcher, service) = CreateService(inspector);
+
+        var insertedCount = 0;
+        service.MediaInserted += (_, _) => Interlocked.Increment(ref insertedCount);
+
+        var tasks = Enumerable.Range(0, 20).Select(_ => Task.Run(() => watcher.RaiseArrived(DriveRoot)));
+        await Task.WhenAll(tasks);
+
+        Assert.Equal(1, insertedCount);
     }
 
     [Fact]
