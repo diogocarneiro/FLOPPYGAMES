@@ -20,7 +20,15 @@
             <TextBlock x:Name="GamesStatusText" DockPanel.Dock="Bottom" Foreground="Gray"
                        TextWrapping="Wrap" Margin="0,8,0,0" />
             <ListBox x:Name="GamesList" DisplayMemberPath="Name"
-                     SelectionChanged="OnGameSelected" />
+                     SelectionChanged="OnGameSelected">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <!-- Sem isto, leitores de ecrã e UI Automation ouvem/veem o ToString()
+                             completo do registo InstalledSteamGame em vez do nome do jogo. -->
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
         </DockPanel>
 
         <!-- Coluna direita: detalhes do jogo selecionado, capa, e escrita para o suporte -->
