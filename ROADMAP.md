@@ -73,16 +73,22 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 **Critério de saída:** criar uma disquete/pen do zero, sem editar `GAME.INI` à mão, e imprimir o respetivo label. ✅ Confirmado visualmente (exceto o clique final em "Escrever para o suporte", propositadamente evitado para não sobrescrever o suporte real do utilizador).
 
-## Fase 5 — Instalador e Distribuição
+## Fase 5 — Instalador e Distribuição ✅ (exceto assinatura de código e CI)
 
-- [ ] Script Inno Setup: instala Agent + Label Studio + Core, cria atalhos no Menu Iniciar.
-- [ ] Passo opcional no assistente: "Iniciar o FloppyGames Agent com o Windows".
-- [ ] Suporte a `FloppyGamesSetup.exe /configure` para alternar o arranque automático pós-instalação.
-- [ ] Desinstalação limpa: remove chave de arranque, atalhos, ficheiros; preserva `GAME.INI`/capas do utilizador em disquetes (óbvio, mas confirmar que não toca em suportes externos).
-- [ ] Assinatura do executável (*code signing*), se aplicável, para evitar avisos do SmartScreen.
-- [ ] Pipeline de release (build + empacotamento) — GitHub Actions.
+- [x] Script Inno Setup (`src/FloppyGames.Installer/FloppyGames.iss`) + `build.ps1`: publica Agent e Label Studio *self-contained* (`win-x64`, sem exigir .NET à parte) e compila o instalador. Instala em `%LOCALAPPDATA%\Programs\FloppyGames` — sem privilégios de administrador — com atalhos no Menu Iniciar.
+- [x] Passo opcional no assistente: "Iniciar o FloppyGames Agent com o Windows".
+- [x] Suporte a `FloppyGamesSetup.exe /configure` para alternar o arranque automático pós-instalação, sem passar pelo assistente completo.
+- [x] Desinstalação limpa: remove ficheiros, atalhos e a entrada de arranque automático (`CurUninstallStepChanged`, cobre qualquer origem da entrada — tarefa, `/configure`, ou Definições do Agent). Nunca toca em suportes amovíveis, e preserva deliberadamente os logs do utilizador em `%LOCALAPPDATA%\FloppyGames\logs`.
+- [ ] Assinatura do executável (*code signing*) — exige um certificado adquirido; fora do alcance deste ambiente. Sem isto, o Windows SmartScreen vai avisar na primeira execução — aceitável para um projeto pessoal, mas a documentar para quem for distribuir mais largamente.
+- [ ] Pipeline de release (GitHub Actions) — build + empacotamento automático a cada tag; ainda não configurado.
 
-**Critério de saída:** instalar, usar, alternar arranque automático e desinstalar sem deixar resíduos, tudo via UI.
+**Duas armadilhas reais do Inno Setup encontradas e corrigidas ao testar** (detalhadas em [src/FloppyGames.Installer/README.md](src/FloppyGames.Installer/README.md)):
+- A constante `{app}` não está disponível dentro de `InitializeSetup` (só depois da página de escolha de pasta) — `/configure` precisa do caminho de instalação antes disso, por isso passou a lê-lo da própria chave de desinstalação que o Inno já escreve, em vez de `{app}`.
+- O diálogo de escolha de idioma aparecia *antes* de `InitializeSetup` correr, o que fazia `/configure` mostrar sempre essa janela primeiro. Resolvido com `ShowLanguageDialog=no`.
+
+**Verificação:** ciclo completo testado à mão nesta máquina — instalação silenciosa com a tarefa de arranque automático ligada (ficheiros, atalhos e chave de registo corretos), `/configure` nos dois sentidos (desativar quando ativo, ativar quando inativo, texto e registo corretos em ambos), e desinstalação silenciosa (ficheiros, atalhos e *ambas* as chaves de registo removidos; logs preservados). Instalador final: ~94 MB.
+
+**Critério de saída:** instalar, usar, alternar arranque automático e desinstalar sem deixar resíduos, tudo via UI. ✅ Confirmado.
 
 ## Fase 6 — Polimento e Extras (Stretch Goals)
 

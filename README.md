@@ -161,10 +161,13 @@ GracefulShutdown=true
 
 ## Instalação
 
-1. Descarregar o instalador mais recente (`FloppyGamesSetup.exe`) a partir da página de releases.
-2. Executar o instalador — escolher se o Agent deve arrancar com o Windows.
-3. Abrir o **FloppyGames Label Studio** para preparar a primeira disquete.
-4. Inserir o suporte preparado e confirmar que o jogo arranca.
+Ainda sem *releases* publicados (falta a Fase 5's pipeline de CI) — por agora, compila o instalador a partir do código-fonte:
+
+1. Instalar o [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).
+2. Correr `src\FloppyGames.Installer\build.ps1` — publica o Agent e o Label Studio e gera `FloppyGamesSetup.exe` em `src\FloppyGames.Installer\Output\`. Ver [detalhes](src/FloppyGames.Installer/README.md).
+3. Executar o instalador — escolher se o Agent deve arrancar com o Windows.
+4. Abrir o **FloppyGames Label Studio** para preparar a primeira disquete.
+5. Inserir o suporte preparado e confirmar que o jogo arranca.
 
 ## Arranque Automático com o Windows
 
