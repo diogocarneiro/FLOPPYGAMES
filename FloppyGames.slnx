@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FloppyGames.Agent/FloppyGames.Agent.csproj" />
+    <Project Path="src/FloppyGames.Core/FloppyGames.Core.csproj" />
+    <Project Path="src/FloppyGames.LabelStudio/FloppyGames.LabelStudio.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FloppyGames.Core.Tests/FloppyGames.Core.Tests.csproj" />
+  </Folder>
+</Solution>

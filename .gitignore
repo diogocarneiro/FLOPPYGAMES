@@ -1,0 +1,68 @@
+## .NET / Visual Studio / Rider
+
+bin/
+obj/
+out/
+
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# Publish / packaging output
+publish/
+*.publish.xml
+*.azurePubxml
+*.pubxml
+*.pubxml.user
+
+# Inno Setup build output
+*.exe
+!tools/**/*.exe
+Output/
+
+# FloppyGames runtime data (local logs, user config)
+FloppyGames-logs/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Rider
+*.sln.iml

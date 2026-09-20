@@ -139,7 +139,7 @@ GracefulShutdown=true
 - Windows 10/11 (x64).
 - Cliente Steam instalado e autenticado.
 - Leitor de disquetes USB **ou** pen USB dedicada por jogo.
-- .NET 8 Desktop Runtime (incluído no instalador).
+- .NET 10 Desktop Runtime (incluído no instalador).
 
 ## Instalação
 
@@ -164,10 +164,14 @@ FLOPPYGAMES/
 ├── src/
 │   ├── FloppyGames.Agent/          # Serviço de bandeja — deteção, lançamento, vigilância
 │   ├── FloppyGames.LabelStudio/    # Editor de disquetes/labels
-│   ├── FloppyGames.Core/           # Lógica partilhada (GAME.INI, Steam, processos)
-│   └── FloppyGames.Installer/      # Script Inno Setup
+│   ├── FloppyGames.Core/           # Lógica partilhada (GAME.INI, logging, Steam, processos)
+│   └── FloppyGames.Installer/      # Script Inno Setup (Fase 5)
+├── tests/
+│   └── FloppyGames.Core.Tests/     # Testes unitários do Core (xUnit)
 ├── docs/
 │   └── assets/                     # Diagramas, mockups
+├── Directory.Build.props           # Definições MSBuild partilhadas (nullable, analisadores, etc.)
+├── FloppyGames.slnx                # Solução .NET
 ├── LICENSE.md
 ├── README.md
 └── ROADMAP.md
@@ -177,7 +181,7 @@ FLOPPYGAMES/
 
 | Camada | Escolha | Justificação |
 |---|---|---|
-| Agent + Label Studio | C# / .NET 8 (WPF) | Interop Win32 maduro (`RegisterDeviceNotification`, `Process`), UI nativa rápida a desenvolver, *single-file publish*. |
+| Agent + Label Studio | C# / .NET 10 (WPF) | Interop Win32 maduro (`RegisterDeviceNotification`, `Process`), UI nativa rápida a desenvolver, *single-file publish*, versão LTS mais recente disponível. |
 | Deteção de mídia | `WM_DEVICECHANGE` + `WMI (Win32_VolumeChangeEvent)` | Sem *polling*, reação imediata à inserção/remoção. |
 | Lançamento Steam | `Process.Start("steam://run/<APPID>")` | Delega em Steam a validação/atualização do jogo. |
 | Instalador | Inno Setup | Leve, scriptável, suporta tarefas opcionais (arranque automático). |

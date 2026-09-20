@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Company>Diogo Carneiro</Company>
+    <Product>FloppyGames</Product>
+    <Authors>Diogo Carneiro</Authors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

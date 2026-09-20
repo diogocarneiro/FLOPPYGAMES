@@ -2,13 +2,13 @@
 
 Plano de desenvolvimento faseado. Cada fase produz algo executável e testável — nada de "big bang". As fases são sequenciais, mas dentro de cada uma as tarefas podem avançar em paralelo.
 
-## Fase 0 — Fundação do Projeto
+## Fase 0 — Fundação do Projeto ✅
 
-- [ ] Criar solução .NET (`FloppyGames.sln`) com os projetos `Core`, `Agent`, `LabelStudio`, `Installer`.
-- [ ] Definir `.editorconfig`, `nullable enable`, análise estática (`dotnet format`, analyzers).
-- [ ] Configurar `.gitignore` para artefactos .NET/Windows.
-- [ ] Definir o esquema formal do `GAME.INI` (documentado no README) e escrever o *parser* + testes unitários.
-- [ ] Definir estrutura de logging (Serilog, ficheiro rotativo em `%LOCALAPPDATA%\FloppyGames\logs`).
+- [x] Criar solução .NET (`FloppyGames.slnx`) com os projetos `Core`, `Agent`, `LabelStudio`, `Installer`.
+- [x] Definir `.editorconfig`, `nullable enable`, análise estática (`Directory.Build.props`, analisadores).
+- [x] Configurar `.gitignore` para artefactos .NET/Windows.
+- [x] Definir o esquema formal do `GAME.INI` (documentado no README) e escrever o *parser* + testes unitários.
+- [x] Definir estrutura de logging (Serilog, ficheiro rotativo em `%LOCALAPPDATA%\FloppyGames\logs`).
 
 **Critério de saída:** `FloppyGames.Core` compila, com parser de `GAME.INI` testado (casos válidos, inválidos, campos opcionais em falta).
 
