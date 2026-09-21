@@ -118,6 +118,7 @@
   <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>No cover art found on Steam — choose a local image below.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Choose cover</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Images</value></data>
+  <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Title, process and description filled in from the local catalog.</value></data>
   <data name="LS_ImageReadFailed" xml:space="preserve"><value>Couldn't read that image.</value></data>
   <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Choose a target drive.</value></data>
   <data name="LS_TitleProcessRequired" xml:space="preserve"><value>Title and Process are required.</value></data>

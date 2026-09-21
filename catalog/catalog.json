@@ -1,0 +1,32 @@
+[
+  {
+    "Platform": "Steam",
+    "SteamAppId": 730,
+    "Title": "Counter-Strike 2",
+    "Process": "cs2.exe",
+    "Description": {
+      "fr": "FPS compétitif 5v5. Le successeur direct de CS:GO, sur le moteur Source 2.",
+      "en": "Competitive 5v5 FPS. The direct successor to CS:GO, on the Source 2 engine.",
+      "pt": "FPS competitivo 5v5. O sucessor direto de CS:GO, no motor Source 2.",
+      "es": "FPS competitivo 5v5. El sucesor directo de CS:GO, en el motor Source 2.",
+      "it": "FPS competitivo 5v5. Il successore diretto di CS:GO, sul motore Source 2."
+    },
+    "Cover": null
+  },
+  {
+    "Platform": "Epic",
+    "EpicNamespace": "13bb5776b9e1424d84ce42d9ba61c0ca",
+    "EpicItemId": "6fdb5feba66846cd8623a6d15ca68080",
+    "EpicAppName": "Marigold",
+    "Title": "INSIDE",
+    "Process": "INSIDE.exe",
+    "Description": {
+      "fr": "Un puzzle-platformer sombre de Playdead, en noir et blanc.",
+      "en": "A dark puzzle-platformer from Playdead, in black and white.",
+      "pt": "Um puzzle-platformer sombrio da Playdead, em preto e branco.",
+      "es": "Un puzzle-plataformas sombrío de Playdead, en blanco y negro.",
+      "it": "Un puzzle-platform cupo di Playdead, in bianco e nero."
+    },
+    "Cover": null
+  }
+]

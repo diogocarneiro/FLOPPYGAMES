@@ -118,6 +118,7 @@
   <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Nessuna copertina trovata su Steam — scegli un'immagine locale qui sotto.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Scegli copertina</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Immagini</value></data>
+  <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Titolo, processo e descrizione compilati dal catalogo locale.</value></data>
   <data name="LS_ImageReadFailed" xml:space="preserve"><value>Impossibile leggere quell'immagine.</value></data>
   <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Scegli un'unità di destinazione.</value></data>
   <data name="LS_TitleProcessRequired" xml:space="preserve"><value>Titolo e Processo sono obbligatori.</value></data>

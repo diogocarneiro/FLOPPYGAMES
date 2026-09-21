@@ -118,6 +118,7 @@
   <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Aucune jaquette trouvée sur Steam — choisis une image locale ci-dessous.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Choisir une jaquette</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Images</value></data>
+  <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Titre, processus et description remplis à partir du catalogue local.</value></data>
   <data name="LS_ImageReadFailed" xml:space="preserve"><value>Impossible de lire cette image.</value></data>
   <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Choisis une unité de destination.</value></data>
   <data name="LS_TitleProcessRequired" xml:space="preserve"><value>Le titre et le processus sont obligatoires.</value></data>

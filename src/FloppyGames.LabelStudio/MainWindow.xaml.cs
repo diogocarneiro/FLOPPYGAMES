@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using FloppyGames.Core.Catalog;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
@@ -21,6 +23,7 @@ public partial class MainWindow : Window
     private readonly GameExecutableFinder _executableFinder;
     private readonly ICoverArtProvider _coverArtProvider;
     private readonly FloppyMediaWriter _mediaWriter;
+    private readonly GameCatalog _catalog;
 
     private List<DiscoveredGame> _allGames = [];
     private DiscoveredGame? _selectedGame;
@@ -43,6 +46,7 @@ public partial class MainWindow : Window
         _executableFinder = new GameExecutableFinder(fileSystem);
         _coverArtProvider = new SteamCdnCoverArtProvider();
         _mediaWriter = new FloppyMediaWriter(new FileSystemDriveInspector());
+        _catalog = new GameCatalog();
 
         RefreshDrives();
 
@@ -160,16 +164,57 @@ public partial class MainWindow : Window
         _coverBytes = null;
         _coverFileName = "cover.jpg";
 
-        // Só a Steam tem um CDN de capas público e sem autenticação — Epic/GOG ficam com a
-        // escolha manual de imagem local. Sem isto ficar explícito, a caixa vazia parece avariada.
+        // O catálogo local (catalog/catalog.json) tem processo verificado + descrição já
+        // traduzida para jogos já catalogados — poupa o utilizador de preencher isto outra vez.
+        var catalogEntry = _catalog.TryFind(game);
+        if (catalogEntry is not null)
+        {
+            ProcessBox.Text = catalogEntry.Process;
+            DescriptionBox.Text = ResolveCatalogDescription(catalogEntry);
+            WriteStatusText.Text = Strings.LS_FilledFromCatalog;
+        }
+
+        // Só a Steam tem um CDN de capas público e sem autenticação — Epic/GOG ficam com a capa
+        // do catálogo (se existir) ou a escolha manual de imagem local. Sem isto ficar explícito,
+        // a caixa vazia parece avariada.
         if (game.Platform == GamePlatform.Steam && game.SteamAppId is { } appId)
         {
             ShowNoCoverMessage(Strings.LS_FetchingSteamCover);
-            _ = LoadCoverAsync(appId);
+            _ = LoadCoverAsync(appId, catalogEntry);
         }
-        else
+        else if (catalogEntry is null || !TryLoadCatalogCover(catalogEntry))
         {
             ShowNoCoverMessage(Strings.LS_NoAutoCoverForPlatform(PlatformDisplayName(game.Platform)));
+        }
+    }
+
+    private static string ResolveCatalogDescription(CatalogEntry entry)
+    {
+        var languageCode = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        return entry.Description.TryGetValue(languageCode, out var localized)
+            ? localized
+            : entry.Description.Values.FirstOrDefault() ?? string.Empty;
+    }
+
+    private bool TryLoadCatalogCover(CatalogEntry entry)
+    {
+        var coverPath = _catalog.ResolveCoverPath(entry);
+        if (coverPath is null || !File.Exists(coverPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            _coverBytes = File.ReadAllBytes(coverPath);
+            _coverFileName = "cover" + Path.GetExtension(coverPath);
+            SetCoverImage(_coverBytes);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.Warning(ex, "Falha ao ler a capa do catálogo em {Path}.", coverPath);
+            return false;
         }
     }
 
@@ -195,7 +240,7 @@ public partial class MainWindow : Window
         NoCoverText.Visibility = Visibility.Visible;
     }
 
-    private async Task LoadCoverAsync(int appId)
+    private async Task LoadCoverAsync(int appId, CatalogEntry? catalogEntry)
     {
         _coverFetchCts?.Cancel();
         var cts = new CancellationTokenSource();
@@ -215,7 +260,11 @@ public partial class MainWindow : Window
 
             if (bytes is null)
             {
-                ShowNoCoverMessage(Strings.LS_NoCoverFoundSteam);
+                if (catalogEntry is null || !TryLoadCatalogCover(catalogEntry))
+                {
+                    ShowNoCoverMessage(Strings.LS_NoCoverFoundSteam);
+                }
+
                 return;
             }
 

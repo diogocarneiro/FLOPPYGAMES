@@ -4,6 +4,14 @@
     <ProjectReference Include="..\FloppyGames.Core\FloppyGames.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- catalog/ vive na raiz do repositório (irmão de samples/), não dentro deste projeto —
+         LinkBase reorganiza o caminho de saída para "Catalog\..." em vez de reproduzir "..\..\catalog\...". -->
+    <None Include="..\..\catalog\**\*" LinkBase="Catalog">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

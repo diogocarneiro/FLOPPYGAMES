@@ -101,7 +101,15 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   do padrão, loop sem costura) em vez de estático — deliberadamente lento e sem "flicker" rápido,
   por acessibilidade (fotossensibilidade). Toggle em Definições (`AgentSettings.CrtEffectEnabled`,
   default ligado).
-- [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
+- [x] Catálogo partilhável de `GAME.INI` + capas, para não obrigar cada utilizador a recriar o
+  mapeamento AppID → capa. Ficheiro local versionado no repositório (`catalog/catalog.json`, como
+  `samples/` — sem rede), com processo verificado + descrição traduzida nos 5 idiomas por jogo
+  catalogado; o Label Studio pré-preenche automaticamente ao encontrar uma correspondência (por
+  `SteamAppId`/`EpicItemId`/`GogGameId`). Suporta capas também (`catalog/covers/`), mas a pasta
+  começa vazia: guardar arte comercial de jogos de terceiros no histórico do Git não é uma decisão
+  para tomar sem o próprio utilizador escolher e rever as imagens — o mecanismo já lê e usa uma
+  capa automaticamente assim que lá for colocada, mais útil ainda para Epic/GOG (sem CDN grátis).
+  Seed com 2 entradas reais (CS2/Steam, INSIDE/Epic) usando dados já verificados nesta sessão.
 - [x] Suporte a 5 idiomas (Francês por omissão, Inglês, Português, Espanhol, Italiano) em toda a
   app — Agent, Label Studio e instalador. Um único conjunto de recursos `.resx` partilhado em
   `Core/Localization/` (Francês neutro + 4 satélites, mecanismo standard do .NET), com

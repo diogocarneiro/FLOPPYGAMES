@@ -112,6 +112,7 @@ na própria janela (escolher jogo → detalhes → capa → gravar):
 - Seletor de plataforma (Steam / Epic Games / GOG) — pesquisa a biblioteca local de cada uma sem precisar de *API key* nem autenticação (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)).
 - Sugestão automática do executável a vigiar, a partir da pasta de instalação (o utilizador confirma/corrige).
 - Pré-visualização da capa: descarregada do CDN público da Steam quando a plataforma é Steam; na Epic/GOG (sem CDN público equivalente) a caixa explica isso diretamente em vez de ficar vazia sem explicação, com escolha manual de imagem local sempre disponível.
+- **Catálogo partilhável** (`catalog/catalog.json`, versionado no repositório — sem rede): quando o jogo escolhido já está catalogado, preenche automaticamente o processo (verificado) e a descrição (já traduzida nos 5 idiomas), e usa a capa do catálogo para Epic/GOG quando existir uma. Ver [catalog/README.md](catalog/README.md) para adicionar entradas.
 - Geração automática do `GAME.INI`, incluindo as opções avançadas (timeout, atraso, encerramento suave).
 - Escrita direta do `GAME.INI` + capa para o suporte amovível selecionado, com validação de espaço e aviso antes de sobrescrever.
 - Desenho e impressão do label físico (impressão direta ou exportação para PNG).

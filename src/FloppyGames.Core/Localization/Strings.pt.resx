@@ -118,6 +118,7 @@
   <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Sem capa encontrada na Steam — escolhe uma imagem local abaixo.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Escolher capa</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Imagens</value></data>
+  <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Título, processo e descrição preenchidos a partir do catálogo local.</value></data>
   <data name="LS_ImageReadFailed" xml:space="preserve"><value>Não foi possível ler essa imagem.</value></data>
   <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Escolhe uma unidade destino.</value></data>
   <data name="LS_TitleProcessRequired" xml:space="preserve"><value>Título e Processo são obrigatórios.</value></data>

@@ -124,6 +124,7 @@ public static class Strings
     public static string LS_NoCoverFoundSteam => Get("LS_NoCoverFoundSteam");
     public static string LS_ChooseCoverDialogTitle => Get("LS_ChooseCoverDialogTitle");
     public static string LS_ImagesFilterWord => Get("LS_ImagesFilterWord");
+    public static string LS_FilledFromCatalog => Get("LS_FilledFromCatalog");
     public static string LS_ImageReadFailed => Get("LS_ImageReadFailed");
     public static string LS_ChooseTargetDrive => Get("LS_ChooseTargetDrive");
     public static string LS_TitleProcessRequired => Get("LS_TitleProcessRequired");

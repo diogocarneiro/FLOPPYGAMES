@@ -118,6 +118,7 @@
   <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>No se encontró carátula en Steam — elige una imagen local abajo.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Elegir carátula</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Imágenes</value></data>
+  <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Título, proceso y descripción rellenados desde el catálogo local.</value></data>
   <data name="LS_ImageReadFailed" xml:space="preserve"><value>No se pudo leer esa imagen.</value></data>
   <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Elige una unidad de destino.</value></data>
   <data name="LS_TitleProcessRequired" xml:space="preserve"><value>El título y el proceso son obligatorios.</value></data>
