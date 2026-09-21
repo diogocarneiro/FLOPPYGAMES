@@ -4,6 +4,7 @@ using System.Windows.Media.Imaging;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Platforms;
 using FloppyGames.Core.Steam;
 using Microsoft.Win32;
 using Serilog;
@@ -13,12 +14,15 @@ namespace FloppyGames.LabelStudio;
 public partial class MainWindow : Window
 {
     private readonly ILogger _logger;
-    private readonly SteamLibraryScanner _scanner;
+    private readonly SteamLibraryScanner _steamScanner;
+    private readonly EpicGameLibraryScanner _epicScanner;
+    private readonly GogGameLibraryScanner _gogScanner;
     private readonly GameExecutableFinder _executableFinder;
     private readonly ICoverArtProvider _coverArtProvider;
     private readonly FloppyMediaWriter _mediaWriter;
 
-    private List<InstalledSteamGame> _allGames = [];
+    private List<DiscoveredGame> _allGames = [];
+    private DiscoveredGame? _selectedGame;
     private byte[]? _coverBytes;
     private string _coverFileName = "cover.jpg";
     private CancellationTokenSource? _coverFetchCts;
@@ -31,35 +35,70 @@ public partial class MainWindow : Window
         _logger.Information("FloppyGames Label Studio iniciado.");
 
         var fileSystem = new FileSystemSteamFileSystem();
-        _scanner = new SteamLibraryScanner(fileSystem, new RegistrySteamPathProvider());
+        _steamScanner = new SteamLibraryScanner(fileSystem, new RegistrySteamPathProvider());
+        _epicScanner = new EpicGameLibraryScanner(fileSystem);
+        _gogScanner = new GogGameLibraryScanner();
         _executableFinder = new GameExecutableFinder(fileSystem);
         _coverArtProvider = new SteamCdnCoverArtProvider();
         _mediaWriter = new FloppyMediaWriter(new FileSystemDriveInspector());
 
         RefreshDrives();
-        _ = LoadGamesAsync();
+
+        // Definido em código (não no XAML) para só disparar OnPlatformChanged depois dos scanners
+        // acima estarem prontos — se viesse do XAML, o SelectionChanged correria durante o
+        // InitializeComponent(), antes destes campos serem atribuídos.
+        PlatformCombo.SelectedIndex = 0;
     }
+
+    private GamePlatform SelectedPlatform() => PlatformCombo.SelectedIndex switch
+    {
+        1 => GamePlatform.Epic,
+        2 => GamePlatform.Gog,
+        _ => GamePlatform.Steam,
+    };
+
+    private static string PlatformDisplayName(GamePlatform platform) => platform switch
+    {
+        GamePlatform.Steam => "Steam",
+        GamePlatform.Epic => "Epic Games",
+        GamePlatform.Gog => "GOG",
+        _ => platform.ToString(),
+    };
+
+    private void OnPlatformChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
+        _ = LoadGamesAsync();
 
     private async Task LoadGamesAsync()
     {
-        GamesStatusText.Text = "A ler a biblioteca Steam...";
+        var platform = SelectedPlatform();
+        GamesStatusText.Text = $"A ler a biblioteca {PlatformDisplayName(platform)}...";
 
         try
         {
-            var games = await Task.Run(() => _scanner.ScanInstalledGames());
+            var games = await Task.Run(() => ScanPlatform(platform));
             _allGames = [.. games];
 
             ApplyFilter(SearchBox.Text);
             GamesStatusText.Text = _allGames.Count == 0
-                ? "Nenhum jogo encontrado — confirma que a Steam está instalada e tens jogos instalados."
+                ? $"Nenhum jogo encontrado — confirma que o {PlatformDisplayName(platform)} está instalado e tens jogos instalados."
                 : $"{_allGames.Count} jogo(s) encontrado(s).";
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Falha ao ler a biblioteca Steam.");
-            GamesStatusText.Text = "Falha ao ler a biblioteca Steam — ver logs.";
+            _logger.Error(ex, "Falha ao ler a biblioteca {Platform}.", platform);
+            GamesStatusText.Text = "Falha ao ler a biblioteca — ver logs.";
         }
     }
+
+    private List<DiscoveredGame> ScanPlatform(GamePlatform platform) => platform switch
+    {
+        GamePlatform.Steam => _steamScanner.ScanInstalledGames()
+            .Select(g => new DiscoveredGame(g.Name, GamePlatform.Steam, g.InstallPath, g.SizeOnDiskBytes, SteamAppId: g.AppId))
+            .ToList(),
+        GamePlatform.Epic => [.. _epicScanner.ScanInstalledGames()],
+        GamePlatform.Gog => [.. _gogScanner.ScanInstalledGames()],
+        _ => [],
+    };
 
     private void ApplyFilter(string? query)
     {
@@ -73,21 +112,41 @@ public partial class MainWindow : Window
 
     private void OnGameSelected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (GamesList.SelectedItem is not InstalledSteamGame game)
+        if (GamesList.SelectedItem is not DiscoveredGame game)
         {
             DetailsPanel.IsEnabled = false;
+            _selectedGame = null;
             return;
         }
 
+        _selectedGame = game;
         DetailsPanel.IsEnabled = true;
         TitleBox.Text = game.Name;
-        AppIdText.Text = game.AppId.ToString();
+        IdentifierText.Text = FormatIdentifier(game);
         ProcessBox.Text = _executableFinder.FindSuggestedExecutable(game.InstallPath) ?? string.Empty;
         DescriptionBox.Text = string.Empty;
         WriteStatusText.Text = string.Empty;
 
-        _ = LoadCoverAsync(game.AppId);
+        _coverFetchCts?.Cancel();
+        CoverImage.Source = null;
+        _coverBytes = null;
+        _coverFileName = "cover.jpg";
+
+        // Só a Steam tem um CDN de capas público e sem autenticação — Epic/GOG ficam com a
+        // escolha manual de imagem local.
+        if (game.Platform == GamePlatform.Steam && game.SteamAppId is { } appId)
+        {
+            _ = LoadCoverAsync(appId);
+        }
     }
+
+    private static string FormatIdentifier(DiscoveredGame game) => game.Platform switch
+    {
+        GamePlatform.Steam => $"AppID {game.SteamAppId}",
+        GamePlatform.Epic => $"{game.EpicNamespace}:{game.EpicItemId}:{game.EpicAppName}",
+        GamePlatform.Gog => $"GOG ID {game.GogGameId}",
+        _ => "—",
+    };
 
     private async Task LoadCoverAsync(int appId)
     {
@@ -179,7 +238,7 @@ public partial class MainWindow : Window
 
     private void OnWriteClicked(object sender, RoutedEventArgs e)
     {
-        if (GamesList.SelectedItem is not InstalledSteamGame)
+        if (_selectedGame is not { } selectedGame)
         {
             return;
         }
@@ -187,12 +246,6 @@ public partial class MainWindow : Window
         if (DriveCombo.SelectedItem is not string driveRoot)
         {
             WriteStatusText.Text = "Escolhe uma unidade destino.";
-            return;
-        }
-
-        if (!int.TryParse(AppIdText.Text, out var appId))
-        {
-            WriteStatusText.Text = "AppID inválido.";
             return;
         }
 
@@ -217,7 +270,12 @@ public partial class MainWindow : Window
         var config = new GameConfig
         {
             Title = TitleBox.Text.Trim(),
-            AppId = appId,
+            Platform = selectedGame.Platform,
+            AppId = selectedGame.SteamAppId,
+            EpicNamespace = selectedGame.EpicNamespace,
+            EpicItemId = selectedGame.EpicItemId,
+            EpicAppName = selectedGame.EpicAppName,
+            GogGameId = selectedGame.GogGameId,
             Process = ProcessBox.Text.Trim(),
             Cover = _coverBytes is not null ? _coverFileName : null,
             Description = string.IsNullOrWhiteSpace(DescriptionBox.Text) ? null : DescriptionBox.Text.Trim(),
@@ -249,7 +307,7 @@ public partial class MainWindow : Window
             _mediaWriter.Write(driveRoot, config, _coverBytes, config.Cover);
             WriteStatusText.Text = $"Disquete pronta: \"{config.Title}\" escrito em {driveRoot}.";
             _logger.Information(
-                "GAME.INI escrito em {Drive} para {Title} (AppID {AppId}).", driveRoot, config.Title, config.AppId);
+                "GAME.INI escrito em {Drive} para {Title} ({Platform}).", driveRoot, config.Title, config.Platform);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -260,7 +318,7 @@ public partial class MainWindow : Window
 
     private void OnPrintLabelClicked(object sender, RoutedEventArgs e)
     {
-        if (GamesList.SelectedItem is not InstalledSteamGame)
+        if (_selectedGame is null)
         {
             return;
         }

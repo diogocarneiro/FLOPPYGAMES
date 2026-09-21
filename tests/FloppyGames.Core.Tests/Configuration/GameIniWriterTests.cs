@@ -56,4 +56,58 @@ public class GameIniWriterTests
         Assert.True(result.Success);
         Assert.Equal(0, result.Config!.LaunchDelaySeconds);
     }
+
+    [Fact]
+    public void Write_ThenParse_EpicConfig_RoundTrips()
+    {
+        var original = new GameConfig
+        {
+            Title = "INSIDE",
+            Platform = GamePlatform.Epic,
+            EpicNamespace = "13bb5776b9e1424d84ce42d9ba61c0ca",
+            EpicItemId = "6fdb5feba66846cd8623a6d15ca68080",
+            EpicAppName = "Marigold",
+            Process = "INSIDE.exe",
+        };
+
+        var result = GameIniParser.Parse(GameIniWriter.Write(original));
+
+        Assert.True(result.Success);
+        Assert.Equal(original, result.Config);
+    }
+
+    [Fact]
+    public void Write_ThenParse_GogConfig_RoundTrips()
+    {
+        var original = new GameConfig
+        {
+            Title = "Some Game",
+            Platform = GamePlatform.Gog,
+            GogGameId = "1234567890",
+            Process = "game.exe",
+        };
+
+        var result = GameIniParser.Parse(GameIniWriter.Write(original));
+
+        Assert.True(result.Success);
+        Assert.Equal(original, result.Config);
+    }
+
+    [Fact]
+    public void Write_EpicConfig_OmitsAppIdLine()
+    {
+        var config = new GameConfig
+        {
+            Title = "INSIDE",
+            Platform = GamePlatform.Epic,
+            EpicNamespace = "ns",
+            EpicItemId = "item",
+            EpicAppName = "app",
+            Process = "INSIDE.exe",
+        };
+
+        var ini = GameIniWriter.Write(config);
+
+        Assert.DoesNotContain("APPID=", ini);
+    }
 }

@@ -6,6 +6,7 @@ using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Platforms;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
 using Serilog;
@@ -50,13 +51,24 @@ public partial class MainWindow : Window
 
         var steamFileSystem = new FileSystemSteamFileSystem();
         var steamPathProvider = new RegistrySteamPathProvider();
+        var epicLibraryScanner = new EpicGameLibraryScanner(steamFileSystem);
+        var gogLibraryScanner = new GogGameLibraryScanner();
         _summaryBuilder = new GameLaunchSummaryBuilder(
             new SteamLibraryScanner(steamFileSystem, steamPathProvider),
             new SteamPlaytimeReader(steamFileSystem, steamPathProvider),
             new SteamWebApiAchievementsProvider(),
-            new AgentSettingsStore());
+            new AgentSettingsStore(),
+            epicLibraryScanner,
+            gogLibraryScanner);
 
-        _sessionManager = new GameSessionManager(_mediaService, new SteamProtocolLauncher(), new Win32ProcessGateway(), _logger);
+        var launcher = new CompositeGameLauncher(new Dictionary<GamePlatform, IGameLauncher>
+        {
+            [GamePlatform.Steam] = new SteamProtocolLauncher(),
+            [GamePlatform.Epic] = new EpicProtocolLauncher(),
+            [GamePlatform.Gog] = new GogExeLauncher(gogLibraryScanner),
+        });
+
+        _sessionManager = new GameSessionManager(_mediaService, launcher, new Win32ProcessGateway(), _logger);
         _sessionManager.LaunchStarting += OnLaunchStarting;
         _sessionManager.GameLaunched += OnGameLaunched;
         _sessionManager.GameLaunchFailed += OnGameLaunchFailed;
@@ -92,7 +104,7 @@ public partial class MainWindow : Window
     }
 
     private void OnMediaInserted(object? sender, MediaInsertedEventArgs e) =>
-        AppendStatus($"Disquete inserida em {e.DriveRoot}: {e.Config.Title} (AppID {e.Config.AppId}, processo {e.Config.Process}).");
+        AppendStatus($"Disquete inserida em {e.DriveRoot}: {e.Config.Title} ({e.Config.Platform}, processo {e.Config.Process}).");
 
     private void OnMediaRemoved(object? sender, MediaRemovedEventArgs e) =>
         AppendStatus($"Disquete removida de {e.DriveRoot}: {e.Config.Title}.");
@@ -106,8 +118,8 @@ public partial class MainWindow : Window
             var splash = new SplashWindow();
             var coverPath = e.Config.Cover is null ? null : Path.Combine(e.DriveRoot, e.Config.Cover);
             var mediaKind = MediaKindClassifier.Classify(e.DriveRoot);
-            splash.SetGame(e.Config.Title, e.Config.Description, coverPath, mediaKind);
-            splash.SetStatus("A abrir a Steam...");
+            splash.SetGame(e.Config.Title, e.Config.Description, coverPath, mediaKind, e.Config.Platform);
+            splash.SetStatus(LaunchingStatusText(e.Config.Platform));
             splash.StartProgress(TimeSpan.FromSeconds(e.Config.LaunchDelaySeconds + e.Config.WatchTimeoutSeconds));
             splash.Show();
 
@@ -123,7 +135,7 @@ public partial class MainWindow : Window
         });
 
     /// <summary>
-    /// Tamanho/CRC32/estado de instalação demoram a apurar (I/O num suporte que pode ser lento),
+    /// Tamanho/estado de instalação demoram a apurar (I/O num suporte que pode ser lento),
     /// por isso correm em segundo plano e só atualizam a splash se ela ainda for a atual para esta unidade.
     /// </summary>
     private async Task UpdateSplashSummaryAsync(string driveRoot, GameConfig config, SplashWindow splash)
@@ -163,6 +175,14 @@ public partial class MainWindow : Window
 
     private void OnGameStopped(object? sender, GameStoppedEventArgs e) =>
         AppendStatus($"{e.Config.Title} terminado.");
+
+    private static string LaunchingStatusText(GamePlatform platform) => platform switch
+    {
+        GamePlatform.Steam => "A abrir a Steam...",
+        GamePlatform.Epic => "A abrir a Epic Games Launcher...",
+        GamePlatform.Gog => "A abrir o jogo...",
+        _ => "A abrir...",
+    };
 
     private void AppendStatus(string message) =>
         Dispatcher.Invoke(() => StatusLog.Insert(0, $"{DateTime.Now:HH:mm:ss} — {message}"));

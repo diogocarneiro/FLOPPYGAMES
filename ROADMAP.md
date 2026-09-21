@@ -95,7 +95,13 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 - [ ] Som de motor de disquete a tocar durante a animação de loading (efeito opcional).
 - [ ] Animação CRT/scanlines configurável na splash.
 - [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
-- [ ] Suporte a outros lançadores além de Steam (Epic, GOG) via *deep links* próprios, mantendo `GAME.INI` genérico (`LAUNCHER=steam|epic|gog`).
+- [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic
+  (biblioteca + lançamento) **verificado** contra dados reais de uma instalação existente
+  (`%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item`, URI de lançamento documentado
+  pela Epic). GOG (lançamento direto do `.exe`, biblioteca via Registo
+  `HKLM\...\GOG.com\Games`) implementado a partir do que é documentado pela comunidade, mas
+  **não verificado em hardware real** — nenhuma máquina disponível tinha GOG Galaxy instalado.
+  Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
 - [ ] Suporte a etiquetas NFC/RFID coladas na disquete como gatilho alternativo à deteção de volume (mais fiável em pens genéricas).
 

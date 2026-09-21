@@ -79,9 +79,9 @@ Um segundo componente, o `FloppyGames Label Studio`, permite criar as disquetes:
 2. **Deteção da mídia** — o agente combina duas fontes: eventos de sistema (WMI) para quando um volume aparece/desaparece (pens USB), e uma sondagem leve e dedicada às letras de unidade candidatas a drive de disquetes, porque o Windows **não notifica de forma fiável** a troca de disco dentro de uma drive já ligada — ao contrário de uma pen, a letra da drive de disquetes mantém-se atribuída, só o estado "pronta" muda consoante haja ou não disco lá dentro. Ver [nota técnica](#nota-técnica-deteção-de-disquetes) abaixo.
 3. **Leitura do `GAME.INI`** — valida se a raiz do suporte contém um `GAME.INI` bem formado; ignora o suporte caso contrário.
 4. **Carregamento da capa** — lê a imagem referenciada em `COVER=` a partir do próprio suporte.
-5. **Animação** — uma splash widescreen (1280×720) no estilo de um ecrã de arranque retro: a capa do jogo como wallpaper desfocado, título, tipo de suporte (disquete/USB) logo por baixo do nome, `DESCRIPTION`, e um painel de estatísticas apurado localmente — tamanho do suporte, estado "instalado" (e tamanho em disco), build ID, data da última atualização, tempo de jogo total e data da última sessão, todos lidos da biblioteca Steam local (`appmanifest_*.acf` e `localconfig.vdf`). Uma barra de progresso real de 0% a 100% avança em função do atraso/timeout configurados, e só atinge 100% quando o processo do jogo é mesmo confirmado.
-   > **Conquistas (opcional):** a Steam só as guarda localmente num cache binário não documentado (`appcache\stats\UserGameStats_*.bin`, conquistas embrulhadas em bits dentro de stats inteiros, sem esquema estável entre jogos) — fiável de mais para depender disso. Em vez disso, se configurares uma chave da Steam Web API nas Definições do Agent (grátis, em steamcommunity.com/dev/apikey), a splash faz um pedido a `ISteamUserStats/GetPlayerAchievements` e mostra "X/Y conquistas". Sem chave, essa linha simplesmente não aparece — o resto do FloppyGames continua 100% offline.
-6. **Execução do comando Steam** — invoca `steam://run/<APPID>` via `ShellExecute`, deixando o cliente Steam tratar do lançamento/atualização do jogo.
+5. **Animação** — uma splash widescreen (1280×720) no estilo de um ecrã de arranque retro: a capa do jogo como wallpaper desfocado, título, tipo de suporte (disquete/USB) logo por baixo do nome, `DESCRIPTION`, e um painel de estatísticas apurado localmente — tamanho do suporte e estado "instalado" (e tamanho em disco) em todas as plataformas; build ID, data da última atualização e tempo de jogo total só na Steam (`appmanifest_*.acf` e `localconfig.vdf` — sem equivalente local fiável na Epic/GOG). Uma barra de progresso real de 0% a 100% avança em função do atraso/timeout configurados, e só atinge 100% quando o processo do jogo é mesmo confirmado.
+   > **Conquistas (opcional, só Steam):** a Steam só as guarda localmente num cache binário não documentado (`appcache\stats\UserGameStats_*.bin`, conquistas embrulhadas em bits dentro de stats inteiros, sem esquema estável entre jogos) — fiável de mais para depender disso. Em vez disso, se configurares uma chave da Steam Web API nas Definições do Agent (grátis, em steamcommunity.com/dev/apikey), a splash faz um pedido a `ISteamUserStats/GetPlayerAchievements` e mostra "X/Y conquistas". Sem chave, essa linha simplesmente não aparece — o resto do FloppyGames continua 100% offline.
+6. **Lançamento** — despacha para a loja certa consoante `PLATFORM`: `steam://run/<APPID>` na Steam, o URI documentado da Epic Games Launcher na Epic, ou o `.exe` instalado diretamente na GOG (ver [nota técnica](#nota-técnica-suporte-multi-plataforma) abaixo).
 7. **Confirmação do processo** — sondagem da lista de processos até detetar `PROCESS` (com timeout configurável); fecha a splash quando confirmado.
 8. **Vigilância** — o agente mantém-se a monitorizar o par (suporte inserido ↔ processo vivo).
 9. **Remoção do disquete** — deteção de remoção do volume.
@@ -128,6 +128,7 @@ Cada suporte contém, na raiz, um `GAME.INI` com a seguinte estrutura mínima:
 ```ini
 [Game]
 TITLE=Half-Life 2
+PLATFORM=STEAM
 APPID=220
 PROCESS=hl2.exe
 COVER=cover.jpg
@@ -136,7 +137,7 @@ DESCRIPTION=Regressa a City 17 numa revolta contra o Combine.
 [Options]
 ; tempo máximo (segundos) à espera que o processo do jogo apareça
 WatchTimeoutSeconds=30
-; atraso (segundos) antes de disparar o comando steam://run
+; atraso (segundos) antes de disparar o lançamento
 LaunchDelaySeconds=2
 ; encerrar o processo de forma suave (WM_CLOSE) antes de forçar (TerminateProcess)
 GracefulShutdown=true
@@ -145,7 +146,10 @@ GracefulShutdown=true
 | Campo | Obrigatório | Descrição |
 |---|---|---|
 | `TITLE` | Sim | Nome apresentado na animação de loading. |
-| `APPID` | Sim | AppID da Steam usado em `steam://run/APPID`. |
+| `PLATFORM` | Não | `STEAM` (default), `EPIC` ou `GOG` — decide que campo de identidade abaixo é exigido. |
+| `APPID` | Só se `PLATFORM=STEAM` | AppID da Steam, usado em `steam://run/APPID`. |
+| `EPIC_NAMESPACE` / `EPIC_ITEM` / `EPIC_APP` | Só se `PLATFORM=EPIC` | Identidade do jogo no catálogo da Epic (ver [nota técnica](#nota-técnica-suporte-multi-plataforma) abaixo). |
+| `GOG_ID` | Só se `PLATFORM=GOG` | ID interno do jogo na GOG (nome da subchave em `HKLM\...\GOG.com\Games`). |
 | `PROCESS` | Sim | Nome do executável a vigiar e a terminar na remoção do disquete. |
 | `COVER` | Não | Caminho relativo à capa (na raiz do suporte). |
 | `DESCRIPTION` | Não | Frase curta (uma linha) mostrada no ecrã de arranque, por baixo do título. |
@@ -154,6 +158,26 @@ GracefulShutdown=true
 | `GracefulShutdown` | Não | Se `true`, tenta fechar o processo de forma suave antes de forçar. |
 
 > **Nota de capacidade:** uma disquete 3.5" tem tipicamente 1.44 MB. O `GAME.INI` ocupa bytes irrelevantes, mas a `COVER` deve ser uma imagem pequena (JPEG comprimido, poucas dezenas de KB) para deixar espaço de sobra. O Label Studio valida o espaço disponível antes de escrever para o suporte.
+
+### Nota técnica: suporte multi-plataforma
+
+O Label Studio e o Agent suportam três lojas — cada uma com um grau de confiança diferente:
+
+- **Steam** — protocolo `steam://run/<appid>`. Biblioteca lida de `appmanifest_*.acf`.
+- **Epic Games Launcher** — protocolo documentado
+  `com.epicgames.launcher://apps/{namespace}%3A{item}%3A{appname}?action=launch&silent=true`.
+  Biblioteca lida de `%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item` (JSON simples).
+  **Verificado** contra um manifesto real durante o desenvolvimento — os nomes de campo
+  (`DisplayName`, `InstallLocation`, `InstallSize`, `CatalogNamespace`, `CatalogItemId`, `AppName`)
+  vêm de lá, não de suposição.
+- **GOG Galaxy** — sem protocolo oficial fiável para lançar um jogo por URI, por isso o Agent
+  lança o `.exe` instalado diretamente. O caminho é resolvido no momento do lançamento a partir de
+  `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<gameID>` (valores `name`, `path`, `exe`) — não gravado
+  no `GAME.INI`, para o floppy continuar portátil entre reinstalações.
+  **Não verificado**: o GOG Galaxy não estava instalado em nenhuma máquina disponível ao escrever
+  isto. A estrutura segue apenas o que é documentado pela comunidade (usada por ferramentas como o
+  Playnite) — falha graciosamente (sem listar/lançar nada) se os nomes de chave não baterem certo,
+  mas só fica confirmada com um teste em hardware real com GOG instalado.
 
 ## Requisitos
 

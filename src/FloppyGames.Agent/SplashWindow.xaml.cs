@@ -1,7 +1,9 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Media;
 
 namespace FloppyGames.Agent;
@@ -31,7 +33,7 @@ public partial class SplashWindow : Window
         _progressTimer.Tick += (_, _) => TickProgress();
     }
 
-    public void SetGame(string title, string? description, string? coverPath, MediaKind mediaKind)
+    public void SetGame(string title, string? description, string? coverPath, MediaKind mediaKind, GamePlatform platform)
     {
         TitleText.Text = title;
         StatusText.Text = "A preparar...";
@@ -45,7 +47,7 @@ public partial class SplashWindow : Window
         MediaKindLabel.Text = SpaceOutLetters(isFloppy ? "DISQUETE DETETADA" : "PEN USB DETETADA");
 
         SizeText.Text = FormatStatLine("SUPORTE", "a verificar...");
-        InstalledText.Text = FormatStatLine("STEAM", "a verificar...");
+        InstalledText.Text = FormatStatLine(platform.ToString().ToUpperInvariant(), "a verificar...");
         BuildText.Text = FormatStatLine("BUILD", "a verificar...");
         UpdatedText.Text = FormatStatLine("ATUALIZADO", "a verificar...");
         PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", "a verificar...");
@@ -84,27 +86,26 @@ public partial class SplashWindow : Window
 
     public void SetStatus(string message) => StatusText.Text = message;
 
-    /// <summary>Preenche tamanho/estado de instalação/build/tempo de jogo assim que ficam disponíveis (calculados fora da UI thread).</summary>
+    /// <summary>
+    /// Preenche tamanho/estado de instalação e, quando disponível, build/tempo de jogo/conquistas
+    /// (exclusivos da Steam) assim que ficam disponíveis (calculados fora da UI thread). Cada linha
+    /// esconde-se de forma independente quando o respetivo dado não existe para a plataforma —
+    /// a Epic, por exemplo, mostra tamanho instalado mas não tempo de jogo.
+    /// </summary>
     public void SetSummary(GameLaunchSummary summary)
     {
         SizeText.Text = FormatStatLine("SUPORTE", FormatBytes(summary.MediaSizeBytes));
 
-        if (!summary.IsInstalledOnSteam)
-        {
-            InstalledText.Text = FormatStatLine("STEAM", "não instalado");
-            BuildText.Visibility = Visibility.Collapsed;
-            UpdatedText.Visibility = Visibility.Collapsed;
-            PlaytimeText.Visibility = Visibility.Collapsed;
-            LastSessionText.Visibility = Visibility.Collapsed;
-            AchievementsText.Visibility = Visibility.Collapsed;
-            return;
-        }
+        var platformLabel = summary.Platform.ToString().ToUpperInvariant();
+        var installedValue = summary.IsInstalled
+            ? summary.InstalledSizeBytes is { } sizeBytes ? $"instalado ({FormatBytes(sizeBytes)})" : "instalado"
+            : "não instalado";
+        InstalledText.Text = FormatStatLine(platformLabel, installedValue);
 
-        InstalledText.Text = FormatStatLine("STEAM", $"instalado ({FormatBytes(summary.InstalledSizeBytes ?? 0)})");
-        BuildText.Text = FormatStatLine("BUILD", summary.BuildId ?? "desconhecida");
-        UpdatedText.Text = FormatStatLine("ATUALIZADO", FormatDate(summary.LastUpdatedUtc));
-        PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", FormatPlaytime(summary.PlaytimeMinutes));
-        LastSessionText.Text = FormatStatLine("ÚLTIMA SESSÃO", FormatDate(summary.LastPlayedUtc));
+        SetOptionalStatLine(BuildText, "BUILD", summary.BuildId);
+        SetOptionalStatLine(UpdatedText, "ATUALIZADO", summary.LastUpdatedUtc is null ? null : FormatDate(summary.LastUpdatedUtc));
+        SetOptionalStatLine(PlaytimeText, "TEMPO DE JOGO", summary.PlaytimeMinutes is null ? null : FormatPlaytime(summary.PlaytimeMinutes));
+        SetOptionalStatLine(LastSessionText, "ÚLTIMA SESSÃO", summary.LastPlayedUtc is null ? null : FormatDate(summary.LastPlayedUtc));
 
         if (summary.Achievements is { } achievements)
         {
@@ -115,6 +116,18 @@ public partial class SplashWindow : Window
         {
             AchievementsText.Visibility = Visibility.Collapsed;
         }
+    }
+
+    private static void SetOptionalStatLine(TextBlock textBlock, string label, string? value)
+    {
+        if (value is null)
+        {
+            textBlock.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        textBlock.Text = FormatStatLine(label, value);
+        textBlock.Visibility = Visibility.Visible;
     }
 
     /// <summary>

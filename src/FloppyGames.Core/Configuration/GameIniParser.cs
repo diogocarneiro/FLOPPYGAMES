@@ -24,7 +24,28 @@ public static class GameIniParser
 
         var title = RequireString(game, "TITLE", errors);
         var process = RequireString(game, "PROCESS", errors);
-        var appId = RequirePositiveInt(game, "APPID", errors);
+        var platform = ParsePlatform(game?.GetValueOrDefault("PLATFORM"), errors);
+
+        int? appId = null;
+        string? epicNamespace = null;
+        string? epicItemId = null;
+        string? epicAppName = null;
+        string? gogGameId = null;
+
+        switch (platform)
+        {
+            case GamePlatform.Steam:
+                appId = RequirePositiveInt(game, "APPID", errors);
+                break;
+            case GamePlatform.Epic:
+                epicNamespace = RequireString(game, "EPIC_NAMESPACE", errors);
+                epicItemId = RequireString(game, "EPIC_ITEM", errors);
+                epicAppName = RequireString(game, "EPIC_APP", errors);
+                break;
+            case GamePlatform.Gog:
+                gogGameId = RequireString(game, "GOG_ID", errors);
+                break;
+        }
 
         var cover = game?.GetValueOrDefault("COVER");
         var description = game?.GetValueOrDefault("DESCRIPTION");
@@ -41,7 +62,12 @@ public static class GameIniParser
         var config = new GameConfig
         {
             Title = title!,
-            AppId = appId!.Value,
+            Platform = platform,
+            AppId = appId,
+            EpicNamespace = epicNamespace,
+            EpicItemId = epicItemId,
+            EpicAppName = epicAppName,
+            GogGameId = gogGameId,
             Process = process!,
             Cover = string.IsNullOrWhiteSpace(cover) ? null : cover,
             Description = string.IsNullOrWhiteSpace(description) ? null : description,
@@ -51,6 +77,28 @@ public static class GameIniParser
         };
 
         return GameIniParseResult.Ok(config);
+    }
+
+    private static GamePlatform ParsePlatform(string? raw, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return GamePlatform.Steam;
+        }
+
+        return raw.Trim().ToUpperInvariant() switch
+        {
+            "STEAM" => GamePlatform.Steam,
+            "EPIC" => GamePlatform.Epic,
+            "GOG" => GamePlatform.Gog,
+            _ => InvalidPlatform(raw, errors),
+        };
+    }
+
+    private static GamePlatform InvalidPlatform(string raw, List<string> errors)
+    {
+        errors.Add($"[Game] PLATFORM desconhecida: '{raw}' (valores aceites: STEAM, EPIC, GOG).");
+        return GamePlatform.Steam;
     }
 
     private static string? RequireString(IReadOnlyDictionary<string, string>? section, string key, List<string> errors)

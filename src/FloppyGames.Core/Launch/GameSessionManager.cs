@@ -6,14 +6,14 @@ namespace FloppyGames.Core.Launch;
 
 /// <summary>
 /// Orquestra o ciclo de vida de um jogo a partir dos eventos de mídia: atraso de lançamento,
-/// invocação do protocolo Steam, confirmação de arranque, e encerramento automático no eject.
+/// invocação do launcher da plataforma, confirmação de arranque, e encerramento automático no eject.
 /// Suporta múltiplas unidades em simultâneo, sem interferência entre elas — cada uma tem o seu
 /// próprio lançamento/sessão rastreado independentemente por <c>driveRoot</c>.
 /// </summary>
 public sealed class GameSessionManager : IDisposable
 {
     private readonly RemovableGameMediaService _mediaService;
-    private readonly ISteamLauncher _launcher;
+    private readonly IGameLauncher _launcher;
     private readonly IProcessGateway _processGateway;
     private readonly ILogger _logger;
     private readonly Lock _lock = new();
@@ -22,7 +22,7 @@ public sealed class GameSessionManager : IDisposable
     private bool _disposed;
 
     public GameSessionManager(
-        RemovableGameMediaService mediaService, ISteamLauncher launcher, IProcessGateway processGateway, ILogger logger)
+        RemovableGameMediaService mediaService, IGameLauncher launcher, IProcessGateway processGateway, ILogger logger)
     {
         _mediaService = mediaService;
         _launcher = launcher;
@@ -65,8 +65,8 @@ public sealed class GameSessionManager : IDisposable
             }
 
             _logger.Information(
-                "A lançar {Title} (AppID {AppId}) via steam://run.", config.Title, config.AppId);
-            _launcher.Launch(config.AppId);
+                "A lançar {Title} (plataforma {Platform}).", config.Title, config.Platform);
+            _launcher.Launch(config);
 
             var process = await _processGateway.WaitForProcessAsync(
                 config.Process, TimeSpan.FromSeconds(config.WatchTimeoutSeconds), cts.Token);

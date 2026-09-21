@@ -246,4 +246,156 @@ public class GameIniParserTests
         Assert.False(result.Success);
         Assert.Equal(3, result.Errors.Count);
     }
+
+    [Fact]
+    public void Parse_WithoutPlatform_DefaultsToSteam()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            APPID=400
+            PROCESS=portal.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Equal(GamePlatform.Steam, result.Config!.Platform);
+        Assert.Equal(400, result.Config.AppId);
+    }
+
+    [Theory]
+    [InlineData("epic", GamePlatform.Epic)]
+    [InlineData("EPIC", GamePlatform.Epic)]
+    [InlineData("gog", GamePlatform.Gog)]
+    [InlineData("steam", GamePlatform.Steam)]
+    public void Parse_PlatformIsCaseInsensitive(string raw, GamePlatform expected)
+    {
+        var ini = expected switch
+        {
+            GamePlatform.Epic => $"""
+                [Game]
+                TITLE=Inside
+                PLATFORM={raw}
+                EPIC_NAMESPACE=ns
+                EPIC_ITEM=item
+                EPIC_APP=app
+                PROCESS=INSIDE.exe
+                """,
+            GamePlatform.Gog => $"""
+                [Game]
+                TITLE=Some Game
+                PLATFORM={raw}
+                GOG_ID=1234567890
+                PROCESS=game.exe
+                """,
+            _ => $"""
+                [Game]
+                TITLE=Portal
+                PLATFORM={raw}
+                APPID=400
+                PROCESS=portal.exe
+                """,
+        };
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Equal(expected, result.Config!.Platform);
+    }
+
+    [Fact]
+    public void Parse_UnknownPlatform_Fails()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Portal
+            PLATFORM=EPICGAMESSTOREV2
+            PROCESS=portal.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("PLATFORM", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Parse_EpicPlatform_DoesNotRequireAppId()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Inside
+            PLATFORM=EPIC
+            EPIC_NAMESPACE=ns
+            EPIC_ITEM=item
+            EPIC_APP=app
+            PROCESS=INSIDE.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Config!.AppId);
+        Assert.Equal("ns", result.Config.EpicNamespace);
+        Assert.Equal("item", result.Config.EpicItemId);
+        Assert.Equal("app", result.Config.EpicAppName);
+    }
+
+    [Theory]
+    [InlineData("EPIC_NAMESPACE")]
+    [InlineData("EPIC_ITEM")]
+    [InlineData("EPIC_APP")]
+    public void Parse_EpicPlatform_MissingIdentityField_Fails(string missingField)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["EPIC_NAMESPACE"] = "ns",
+            ["EPIC_ITEM"] = "item",
+            ["EPIC_APP"] = "app",
+        };
+        fields.Remove(missingField);
+
+        var ini = "[Game]\nTITLE=Inside\nPLATFORM=EPIC\nPROCESS=INSIDE.exe\n" +
+                   string.Join('\n', fields.Select(kv => $"{kv.Key}={kv.Value}"));
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains(missingField, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Parse_GogPlatform_RequiresGogId()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Some Game
+            PLATFORM=GOG
+            PROCESS=game.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors, e => e.Contains("GOG_ID", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Parse_GogPlatform_DoesNotRequireAppId()
+    {
+        const string ini = """
+            [Game]
+            TITLE=Some Game
+            PLATFORM=GOG
+            GOG_ID=1234567890
+            PROCESS=game.exe
+            """;
+
+        var result = GameIniParser.Parse(ini);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Config!.AppId);
+        Assert.Equal("1234567890", result.Config.GogGameId);
+    }
 }

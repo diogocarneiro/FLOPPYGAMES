@@ -11,7 +11,23 @@ public static class GameIniWriter
 
         sb.AppendLine("[Game]");
         sb.AppendLine($"TITLE={config.Title}");
-        sb.AppendLine($"APPID={config.AppId}");
+        sb.AppendLine($"PLATFORM={config.Platform.ToString().ToUpperInvariant()}");
+
+        switch (config.Platform)
+        {
+            case GamePlatform.Steam:
+                sb.AppendLine($"APPID={config.AppId}");
+                break;
+            case GamePlatform.Epic:
+                sb.AppendLine($"EPIC_NAMESPACE={config.EpicNamespace}");
+                sb.AppendLine($"EPIC_ITEM={config.EpicItemId}");
+                sb.AppendLine($"EPIC_APP={config.EpicAppName}");
+                break;
+            case GamePlatform.Gog:
+                sb.AppendLine($"GOG_ID={config.GogGameId}");
+                break;
+        }
+
         sb.AppendLine($"PROCESS={config.Process}");
         if (config.Cover is not null)
         {

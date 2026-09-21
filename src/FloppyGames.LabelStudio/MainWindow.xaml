@@ -12,8 +12,15 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Coluna esquerda: pesquisa + lista de jogos instalados -->
+        <!-- Coluna esquerda: plataforma + pesquisa + lista de jogos instalados -->
         <DockPanel Grid.Column="0">
+            <TextBlock DockPanel.Dock="Top" Text="Plataforma" FontWeight="Bold" Margin="0,0,0,4" />
+            <ComboBox x:Name="PlatformCombo" DockPanel.Dock="Top" Margin="0,0,0,12"
+                      SelectionChanged="OnPlatformChanged">
+                <ComboBoxItem Content="Steam" />
+                <ComboBoxItem Content="Epic Games" />
+                <ComboBoxItem Content="GOG (não verificado)" />
+            </ComboBox>
             <TextBlock DockPanel.Dock="Top" Text="Jogos instalados" FontWeight="Bold" Margin="0,0,0,8" />
             <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,0,0,8"
                      TextChanged="OnSearchTextChanged" />
@@ -37,8 +44,8 @@
                 <TextBlock Text="Título" FontWeight="Bold" Margin="0,0,0,4" />
                 <TextBox x:Name="TitleBox" Margin="0,0,0,12" />
 
-                <TextBlock Text="AppID" FontWeight="Bold" Margin="0,0,0,4" />
-                <TextBlock x:Name="AppIdText" Margin="0,0,0,12" />
+                <TextBlock Text="Identificador" FontWeight="Bold" Margin="0,0,0,4" />
+                <TextBlock x:Name="IdentifierText" Margin="0,0,0,12" />
 
                 <TextBlock Text="Processo (executável a vigiar)" FontWeight="Bold" Margin="0,0,0,4" />
                 <TextBox x:Name="ProcessBox" Margin="0,0,0,12" />

@@ -22,14 +22,14 @@ public class GameSessionManagerTests
 
     private static (
         FakeRemovableMediaWatcher MediaWatcher,
-        FakeSteamLauncher Launcher,
+        FakeGameLauncher Launcher,
         FakeProcessGateway Gateway,
         GameSessionManager Manager) CreateManager(string ini)
     {
         var inspector = new FakeDriveInspector().WithRemovableDrive(DriveRoot).WithGameIni(DriveRoot, ini);
         var mediaWatcher = new FakeRemovableMediaWatcher();
         var mediaService = new RemovableGameMediaService(mediaWatcher, new GameMediaScanner(inspector), Logger.None);
-        var launcher = new FakeSteamLauncher();
+        var launcher = new FakeGameLauncher();
         var gateway = new FakeProcessGateway();
         var manager = new GameSessionManager(mediaService, launcher, gateway, Logger.None);
         return (mediaWatcher, launcher, gateway, manager);
@@ -65,7 +65,7 @@ public class GameSessionManagerTests
 
         var result = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.Equal([400], launcher.LaunchedAppIds);
+        Assert.Equal([400], launcher.LaunchedConfigs.Select(c => c.AppId));
         Assert.Equal(DriveRoot, result.DriveRoot);
     }
 
@@ -102,7 +102,7 @@ public class GameSessionManagerTests
         var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         Assert.Contains("removida", reason, StringComparison.OrdinalIgnoreCase);
-        Assert.Empty(launcher.LaunchedAppIds);
+        Assert.Empty(launcher.LaunchedConfigs);
     }
 
     [Fact]

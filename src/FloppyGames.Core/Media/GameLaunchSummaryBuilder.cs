@@ -1,14 +1,16 @@
 using FloppyGames.Core.Configuration;
+using FloppyGames.Core.Platforms;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
 
 namespace FloppyGames.Core.Media;
 
 /// <summary>
-/// Apura os dados extra do ecrã de arranque: tamanho do suporte, estado de instalação na Steam
-/// (build, data de atualização, tempo de jogo, última sessão, conquistas). A parte local corre
-/// fora da thread de UI (I/O que pode ser lento, sobretudo numa disquete física); a parte de
-/// conquistas depende de rede, por isso é sempre assíncrona.
+/// Apura os dados extra do ecrã de arranque: tamanho do suporte, estado de instalação e, quando
+/// disponível, build/atualização/tempo de jogo/conquistas (exclusivos da Steam — sem equivalente
+/// local fiável na Epic/GOG). A parte local corre fora da thread de UI (I/O que pode ser lento,
+/// sobretudo numa disquete física); a parte de conquistas depende de rede, por isso é sempre
+/// assíncrona.
 /// </summary>
 public sealed class GameLaunchSummaryBuilder
 {
@@ -16,17 +18,23 @@ public sealed class GameLaunchSummaryBuilder
     private readonly SteamPlaytimeReader _playtimeReader;
     private readonly ISteamAchievementsProvider _achievementsProvider;
     private readonly AgentSettingsStore _settingsStore;
+    private readonly EpicGameLibraryScanner _epicLibraryScanner;
+    private readonly GogGameLibraryScanner _gogLibraryScanner;
 
     public GameLaunchSummaryBuilder(
         SteamLibraryScanner steamLibraryScanner,
         SteamPlaytimeReader playtimeReader,
         ISteamAchievementsProvider achievementsProvider,
-        AgentSettingsStore settingsStore)
+        AgentSettingsStore settingsStore,
+        EpicGameLibraryScanner epicLibraryScanner,
+        GogGameLibraryScanner gogLibraryScanner)
     {
         _steamLibraryScanner = steamLibraryScanner;
         _playtimeReader = playtimeReader;
         _achievementsProvider = achievementsProvider;
         _settingsStore = settingsStore;
+        _epicLibraryScanner = epicLibraryScanner;
+        _gogLibraryScanner = gogLibraryScanner;
     }
 
     public async Task<GameLaunchSummary> BuildAsync(string driveRoot, GameConfig config, CancellationToken cancellationToken)
@@ -34,20 +42,24 @@ public sealed class GameLaunchSummaryBuilder
         var local = await Task.Run(() => BuildLocalData(driveRoot, config), cancellationToken);
 
         AchievementSummary? achievements = null;
-        if (local.Installed?.LastOwnerSteamId64 is { } ownerSteamId64 && !string.IsNullOrWhiteSpace(local.SteamWebApiKey))
+        if (config.Platform == GamePlatform.Steam
+            && local.SteamOwnerSteamId64 is { } ownerSteamId64
+            && config.AppId is { } steamAppId
+            && !string.IsNullOrWhiteSpace(local.SteamWebApiKey))
         {
             achievements = await _achievementsProvider.TryGetSummaryAsync(
-                local.SteamWebApiKey, ownerSteamId64, config.AppId, cancellationToken);
+                local.SteamWebApiKey, ownerSteamId64, steamAppId, cancellationToken);
         }
 
         return new GameLaunchSummary(
+            config.Platform,
             local.MediaKind,
             local.MediaSizeBytes,
-            local.Installed is not null,
-            local.Installed?.SizeOnDiskBytes,
-            local.Installed?.BuildId,
-            local.Installed?.LastUpdatedUtc,
-            local.Installed?.LastPlayedUtc,
+            local.IsInstalled,
+            local.InstalledSizeBytes,
+            local.BuildId,
+            local.LastUpdatedUtc,
+            local.LastPlayedUtc,
             local.PlaytimeMinutes,
             achievements);
     }
@@ -57,6 +69,17 @@ public sealed class GameLaunchSummaryBuilder
         var mediaKind = MediaKindClassifier.Classify(driveRoot);
         var mediaSizeBytes = ComputeMediaSizeBytes(driveRoot, config);
 
+        return config.Platform switch
+        {
+            GamePlatform.Steam => BuildSteamData(config, mediaKind, mediaSizeBytes),
+            GamePlatform.Epic => BuildEpicData(config, mediaKind, mediaSizeBytes),
+            GamePlatform.Gog => BuildGogData(config, mediaKind, mediaSizeBytes),
+            _ => new LocalData(mediaKind, mediaSizeBytes, false, null, null, null, null, null, null, null),
+        };
+    }
+
+    private LocalData BuildSteamData(GameConfig config, MediaKind mediaKind, long mediaSizeBytes)
+    {
         InstalledSteamGame? installed = null;
         try
         {
@@ -68,11 +91,11 @@ public sealed class GameLaunchSummaryBuilder
         }
 
         long? playtimeMinutes = null;
-        if (installed?.LastOwnerSteamId64 is { } ownerSteamId64)
+        if (installed?.LastOwnerSteamId64 is { } ownerSteamId64 && config.AppId is { } appId)
         {
             try
             {
-                playtimeMinutes = _playtimeReader.TryGetPlaytimeMinutes(config.AppId, ownerSteamId64);
+                playtimeMinutes = _playtimeReader.TryGetPlaytimeMinutes(appId, ownerSteamId64);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -82,7 +105,44 @@ public sealed class GameLaunchSummaryBuilder
 
         var apiKey = _settingsStore.Load().SteamWebApiKey;
 
-        return new LocalData(mediaKind, mediaSizeBytes, installed, playtimeMinutes, apiKey);
+        return new LocalData(
+            mediaKind, mediaSizeBytes, installed is not null, installed?.SizeOnDiskBytes,
+            installed?.BuildId, installed?.LastUpdatedUtc, installed?.LastPlayedUtc, playtimeMinutes,
+            installed?.LastOwnerSteamId64, apiKey);
+    }
+
+    private LocalData BuildEpicData(GameConfig config, MediaKind mediaKind, long mediaSizeBytes)
+    {
+        DiscoveredGame? installed = null;
+        try
+        {
+            installed = _epicLibraryScanner.ScanInstalledGames().FirstOrDefault(g => g.EpicItemId == config.EpicItemId);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Manifestos da Epic momentaneamente inacessíveis — segue sem o estado de instalação.
+        }
+
+        return new LocalData(
+            mediaKind, mediaSizeBytes, installed is not null, installed?.InstalledSizeBytes,
+            null, null, null, null, null, null);
+    }
+
+    private LocalData BuildGogData(GameConfig config, MediaKind mediaKind, long mediaSizeBytes)
+    {
+        DiscoveredGame? installed = null;
+        try
+        {
+            installed = _gogLibraryScanner.ScanInstalledGames().FirstOrDefault(g => g.GogGameId == config.GogGameId);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Registo GOG momentaneamente inacessível — segue sem o estado de instalação.
+        }
+
+        return new LocalData(
+            mediaKind, mediaSizeBytes, installed is not null, installed?.InstalledSizeBytes,
+            null, null, null, null, null, null);
     }
 
     private static long ComputeMediaSizeBytes(string driveRoot, GameConfig config)
@@ -111,5 +171,14 @@ public sealed class GameLaunchSummaryBuilder
     }
 
     private sealed record LocalData(
-        MediaKind MediaKind, long MediaSizeBytes, InstalledSteamGame? Installed, long? PlaytimeMinutes, string? SteamWebApiKey);
+        MediaKind MediaKind,
+        long MediaSizeBytes,
+        bool IsInstalled,
+        long? InstalledSizeBytes,
+        string? BuildId,
+        DateTime? LastUpdatedUtc,
+        DateTime? LastPlayedUtc,
+        long? PlaytimeMinutes,
+        ulong? SteamOwnerSteamId64,
+        string? SteamWebApiKey);
 }
