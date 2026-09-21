@@ -122,6 +122,7 @@ public partial class MainWindow : Window
         _selectedGame = game;
         DetailsPanel.IsEnabled = true;
         TitleBox.Text = game.Name;
+        IdentifierLabel.Text = IdentifierLabelFor(game.Platform);
         IdentifierText.Text = FormatIdentifier(game);
         ProcessBox.Text = _executableFinder.FindSuggestedExecutable(game.InstallPath) ?? string.Empty;
         DescriptionBox.Text = string.Empty;
@@ -133,20 +134,39 @@ public partial class MainWindow : Window
         _coverFileName = "cover.jpg";
 
         // Só a Steam tem um CDN de capas público e sem autenticação — Epic/GOG ficam com a
-        // escolha manual de imagem local.
+        // escolha manual de imagem local. Sem isto ficar explícito, a caixa vazia parece avariada.
         if (game.Platform == GamePlatform.Steam && game.SteamAppId is { } appId)
         {
+            ShowNoCoverMessage("A obter capa da Steam...");
             _ = LoadCoverAsync(appId);
+        }
+        else
+        {
+            ShowNoCoverMessage($"Sem capa automática para {PlatformDisplayName(game.Platform)} — escolhe uma imagem local abaixo.");
         }
     }
 
+    private static string IdentifierLabelFor(GamePlatform platform) => platform switch
+    {
+        GamePlatform.Steam => "AppID (Steam)",
+        GamePlatform.Epic => "Identificador (Epic: namespace:item:app)",
+        GamePlatform.Gog => "ID (GOG)",
+        _ => "Identificador",
+    };
+
     private static string FormatIdentifier(DiscoveredGame game) => game.Platform switch
     {
-        GamePlatform.Steam => $"AppID {game.SteamAppId}",
+        GamePlatform.Steam => $"{game.SteamAppId}",
         GamePlatform.Epic => $"{game.EpicNamespace}:{game.EpicItemId}:{game.EpicAppName}",
-        GamePlatform.Gog => $"GOG ID {game.GogGameId}",
+        GamePlatform.Gog => $"{game.GogGameId}",
         _ => "—",
     };
+
+    private void ShowNoCoverMessage(string message)
+    {
+        NoCoverText.Text = message;
+        NoCoverText.Visibility = Visibility.Visible;
+    }
 
     private async Task LoadCoverAsync(int appId)
     {
@@ -161,8 +181,14 @@ public partial class MainWindow : Window
         try
         {
             var bytes = await _coverArtProvider.TryDownloadCoverAsync(appId, cts.Token);
-            if (cts.IsCancellationRequested || bytes is null)
+            if (cts.IsCancellationRequested)
             {
+                return;
+            }
+
+            if (bytes is null)
+            {
+                ShowNoCoverMessage("Sem capa encontrada na Steam — escolhe uma imagem local abaixo.");
                 return;
             }
 
@@ -185,6 +211,7 @@ public partial class MainWindow : Window
         bitmap.EndInit();
         bitmap.Freeze();
         CoverImage.Source = bitmap;
+        NoCoverText.Visibility = Visibility.Collapsed;
     }
 
     private void OnChooseLocalCoverClicked(object sender, RoutedEventArgs e)

@@ -1,11 +1,13 @@
 namespace FloppyGames.Core.Settings;
 
 /// <summary>
-/// Definições do Agent persistidas localmente, fora do Registo. Por agora só guarda a chave
-/// opcional da Steam Web API, usada exclusivamente para mostrar o número de conquistas no
-/// ecrã de arranque — sem ela, essa linha simplesmente não aparece.
+/// Definições do Agent persistidas localmente, fora do Registo: a chave opcional da Steam Web
+/// API (só usada para mostrar o número de conquistas — sem ela, essa linha simplesmente não
+/// aparece) e se o som do motor de disquete deve tocar quando uma disquete física é detetada.
 /// </summary>
 public sealed record AgentSettings
 {
     public string? SteamWebApiKey { get; init; }
+
+    public bool PlayFloppySound { get; init; } = true;
 }

@@ -4,6 +4,10 @@
     <ProjectReference Include="..\FloppyGames.Core\FloppyGames.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Assets\floppy-motor.wav" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

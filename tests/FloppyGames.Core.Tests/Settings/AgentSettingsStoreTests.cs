@@ -28,6 +28,32 @@ public class AgentSettingsStoreTests : IDisposable
         var settings = store.Load();
 
         Assert.Null(settings.SteamWebApiKey);
+        Assert.True(settings.PlayFloppySound);
+    }
+
+    [Fact]
+    public void Save_ThenLoad_RoundTripsPlayFloppySound()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { PlayFloppySound = false });
+        var settings = store.Load();
+
+        Assert.False(settings.PlayFloppySound);
+    }
+
+    [Fact]
+    public void Save_UpdatingOneField_PreservesTheOther()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { SteamWebApiKey = "ABC123", PlayFloppySound = false });
+        var current = store.Load();
+        store.Save(current with { SteamWebApiKey = "XYZ789" });
+        var settings = store.Load();
+
+        Assert.Equal("XYZ789", settings.SteamWebApiKey);
+        Assert.False(settings.PlayFloppySound);
     }
 
     [Fact]

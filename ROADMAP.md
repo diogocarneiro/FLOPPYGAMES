@@ -92,7 +92,10 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 
 ## Fase 6 — Polimento e Extras (Stretch Goals)
 
-- [ ] Som de motor de disquete a tocar durante a animação de loading (efeito opcional).
+- [x] Som de motor de disquete a tocar durante a animação de loading (efeito opcional). Sintetizado
+  localmente por script (hum de motor + cliques de posicionamento da cabeça, ~2.2s), sem depender
+  de um asset licenciado de terceiros — `src/FloppyGames.Agent/Assets/floppy-motor.wav`. Só toca
+  para disquetes físicas reais (não pens USB), com toggle em Definições.
 - [ ] Animação CRT/scanlines configurável na splash.
 - [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
 - [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic

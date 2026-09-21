@@ -23,10 +23,12 @@ public partial class SettingsWindow : Window
         _settingsStore = new AgentSettingsStore();
 
         LogsPathText.Text = LoggingBootstrapper.LogDirectory;
-        SteamWebApiKeyBox.Text = _settingsStore.Load().SteamWebApiKey ?? string.Empty;
+        var settings = _settingsStore.Load();
+        SteamWebApiKeyBox.Text = settings.SteamWebApiKey ?? string.Empty;
 
         _initializing = true;
         AutostartCheckBox.IsChecked = _autostartManager.IsEnabled;
+        FloppySoundCheckBox.IsChecked = settings.PlayFloppySound;
         _initializing = false;
     }
 
@@ -58,10 +60,25 @@ public partial class SettingsWindow : Window
     private void OnSaveApiKeyClicked(object sender, RoutedEventArgs e)
     {
         var apiKey = SteamWebApiKeyBox.Text.Trim();
-        _settingsStore.Save(new AgentSettings { SteamWebApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey });
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { SteamWebApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey });
         StatusText.Text = string.IsNullOrWhiteSpace(apiKey)
             ? "Chave removida — conquistas deixam de aparecer no ecrã de arranque."
             : "Chave guardada.";
+    }
+
+    private void OnFloppySoundToggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { PlayFloppySound = FloppySoundCheckBox.IsChecked == true });
+        StatusText.Text = FloppySoundCheckBox.IsChecked == true
+            ? "Som do motor ativado."
+            : "Som do motor desativado.";
     }
 
     private void OnApiKeyLinkClicked(object sender, RequestNavigateEventArgs e)
