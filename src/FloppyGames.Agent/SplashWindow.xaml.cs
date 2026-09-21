@@ -1,6 +1,8 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FloppyGames.Core.Configuration;
@@ -85,6 +87,30 @@ public partial class SplashWindow : Window
     }
 
     public void SetStatus(string message) => StatusText.Text = message;
+
+    /// <summary>
+    /// Liga/desliga o varrimento CRT. Quando ligado, desliza continuamente devagar (sem picos
+    /// nem estroboscopia) — deliberadamente lento por acessibilidade, nunca um "flicker" rápido.
+    /// </summary>
+    public void SetCrtEffectEnabled(bool enabled)
+    {
+        ScanlineOverlay.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!enabled)
+        {
+            ScanlineTransform.BeginAnimation(TranslateTransform.YProperty, null);
+            return;
+        }
+
+        var scroll = new DoubleAnimation
+        {
+            From = 0,
+            To = 4,
+            Duration = TimeSpan.FromSeconds(1.2),
+            RepeatBehavior = RepeatBehavior.Forever,
+        };
+        ScanlineTransform.BeginAnimation(TranslateTransform.YProperty, scroll);
+    }
 
     /// <summary>
     /// Preenche tamanho/estado de instalação e, quando disponível, build/tempo de jogo/conquistas

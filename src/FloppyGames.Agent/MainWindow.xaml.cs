@@ -120,12 +120,15 @@ public partial class MainWindow : Window
             var splash = new SplashWindow();
             var coverPath = e.Config.Cover is null ? null : Path.Combine(e.DriveRoot, e.Config.Cover);
             var mediaKind = MediaKindClassifier.Classify(e.DriveRoot);
+            var settings = _settingsStore.Load();
             splash.SetGame(e.Config.Title, e.Config.Description, coverPath, mediaKind, e.Config.Platform);
+            splash.SetCrtEffectEnabled(settings.CrtEffectEnabled);
 
-            if (mediaKind == MediaKind.Floppy && _settingsStore.Load().PlayFloppySound)
+            if (mediaKind == MediaKind.Floppy && settings.PlayFloppySound)
             {
                 FloppyMotorSoundPlayer.PlayIfAvailable();
             }
+
             splash.SetStatus(LaunchingStatusText(e.Config.Platform));
             splash.StartProgress(TimeSpan.FromSeconds(e.Config.LaunchDelaySeconds + e.Config.WatchTimeoutSeconds));
             splash.Show();

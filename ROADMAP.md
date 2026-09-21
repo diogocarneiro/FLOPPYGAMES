@@ -96,7 +96,11 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   localmente por script (hum de motor + cliques de posicionamento da cabeça, ~2.2s), sem depender
   de um asset licenciado de terceiros — `src/FloppyGames.Agent/Assets/floppy-motor.wav`. Só toca
   para disquetes físicas reais (não pens USB), com toggle em Definições.
-- [ ] Animação CRT/scanlines configurável na splash.
+- [x] Animação CRT/scanlines configurável na splash. O varrimento (já existente na splash
+  widescreen) passou a deslizar continuamente (`TranslateTransform` animado sobre o `DrawingBrush`
+  do padrão, loop sem costura) em vez de estático — deliberadamente lento e sem "flicker" rápido,
+  por acessibilidade (fotossensibilidade). Toggle em Definições (`AgentSettings.CrtEffectEnabled`,
+  default ligado).
 - [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
 - [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic
   (biblioteca + lançamento) **verificado** contra dados reais de uma instalação existente

@@ -29,6 +29,7 @@ public partial class SettingsWindow : Window
         _initializing = true;
         AutostartCheckBox.IsChecked = _autostartManager.IsEnabled;
         FloppySoundCheckBox.IsChecked = settings.PlayFloppySound;
+        CrtEffectCheckBox.IsChecked = settings.CrtEffectEnabled;
         _initializing = false;
     }
 
@@ -79,6 +80,20 @@ public partial class SettingsWindow : Window
         StatusText.Text = FloppySoundCheckBox.IsChecked == true
             ? "Som do motor ativado."
             : "Som do motor desativado.";
+    }
+
+    private void OnCrtEffectToggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { CrtEffectEnabled = CrtEffectCheckBox.IsChecked == true });
+        StatusText.Text = CrtEffectCheckBox.IsChecked == true
+            ? "Efeito CRT ativado."
+            : "Efeito CRT desativado.";
     }
 
     private void OnApiKeyLinkClicked(object sender, RequestNavigateEventArgs e)

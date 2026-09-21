@@ -29,6 +29,7 @@ public class AgentSettingsStoreTests : IDisposable
 
         Assert.Null(settings.SteamWebApiKey);
         Assert.True(settings.PlayFloppySound);
+        Assert.True(settings.CrtEffectEnabled);
     }
 
     [Fact]
@@ -40,6 +41,17 @@ public class AgentSettingsStoreTests : IDisposable
         var settings = store.Load();
 
         Assert.False(settings.PlayFloppySound);
+    }
+
+    [Fact]
+    public void Save_ThenLoad_RoundTripsCrtEffectEnabled()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { CrtEffectEnabled = false });
+        var settings = store.Load();
+
+        Assert.False(settings.CrtEffectEnabled);
     }
 
     [Fact]
