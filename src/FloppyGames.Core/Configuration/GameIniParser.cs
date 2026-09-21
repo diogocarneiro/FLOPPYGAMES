@@ -1,4 +1,5 @@
 using System.Globalization;
+using FloppyGames.Core.Localization;
 
 namespace FloppyGames.Core.Configuration;
 
@@ -97,7 +98,7 @@ public static class GameIniParser
 
     private static GamePlatform InvalidPlatform(string raw, List<string> errors)
     {
-        errors.Add($"[Game] PLATFORM desconhecida: '{raw}' (valores aceites: STEAM, EPIC, GOG).");
+        errors.Add(Strings.Core_Parser_UnknownPlatform(raw));
         return GamePlatform.Steam;
     }
 
@@ -106,7 +107,7 @@ public static class GameIniParser
         var value = section?.GetValueOrDefault(key);
         if (string.IsNullOrWhiteSpace(value))
         {
-            errors.Add($"Campo obrigatório em falta: [Game] {key}.");
+            errors.Add(Strings.Core_Parser_MissingRequiredField(key));
             return null;
         }
 
@@ -118,13 +119,13 @@ public static class GameIniParser
         var raw = section?.GetValueOrDefault(key);
         if (string.IsNullOrWhiteSpace(raw))
         {
-            errors.Add($"Campo obrigatório em falta: [Game] {key}.");
+            errors.Add(Strings.Core_Parser_MissingRequiredField(key));
             return null;
         }
 
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
         {
-            errors.Add($"[Game] {key} tem de ser um número inteiro positivo (valor recebido: '{raw}').");
+            errors.Add(Strings.Core_Parser_MustBePositiveInt(key, raw));
             return null;
         }
 
@@ -141,7 +142,7 @@ public static class GameIniParser
 
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
         {
-            errors.Add($"[Options] {key} tem de ser um número inteiro positivo (valor recebido: '{raw}').");
+            errors.Add(Strings.Core_Parser_OptionsMustBePositiveInt(key, raw));
             return defaultValue;
         }
 
@@ -158,7 +159,7 @@ public static class GameIniParser
 
         if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed < 0)
         {
-            errors.Add($"[Options] {key} tem de ser um número inteiro não negativo (valor recebido: '{raw}').");
+            errors.Add(Strings.Core_Parser_OptionsMustBeNonNegativeInt(key, raw));
             return defaultValue;
         }
 
@@ -175,7 +176,7 @@ public static class GameIniParser
 
         if (!bool.TryParse(raw, out var parsed))
         {
-            errors.Add($"[Options] {key} tem de ser 'true' ou 'false' (valor recebido: '{raw}').");
+            errors.Add(Strings.Core_Parser_OptionsMustBeBool(key, raw));
             return defaultValue;
         }
 

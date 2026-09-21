@@ -76,7 +76,7 @@ public sealed class GameSessionManager : IDisposable
                 _logger.Warning(
                     "Timeout à espera de {Process} para {Title} em {Drive}.", config.Process, config.Title, driveRoot);
                 GameLaunchFailed?.Invoke(
-                    this, new GameLaunchFailedEventArgs(driveRoot, config, "Tempo esgotado à espera do processo do jogo."));
+                    this, new GameLaunchFailedEventArgs(driveRoot, config, GameLaunchFailureReason.Timeout));
                 return;
             }
 
@@ -95,12 +95,13 @@ public sealed class GameSessionManager : IDisposable
             _logger.Information(
                 "Lançamento de {Title} cancelado — disquete removida antes de confirmar o arranque.", config.Title);
             GameLaunchFailed?.Invoke(
-                this, new GameLaunchFailedEventArgs(driveRoot, config, "Disquete removida antes de confirmar o arranque."));
+                this, new GameLaunchFailedEventArgs(driveRoot, config, GameLaunchFailureReason.MediaRemovedDuringLaunch));
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Falha inesperada ao lançar {Title} em {Drive}.", config.Title, driveRoot);
-            GameLaunchFailed?.Invoke(this, new GameLaunchFailedEventArgs(driveRoot, config, "Erro inesperado ao lançar o jogo."));
+            GameLaunchFailed?.Invoke(
+                this, new GameLaunchFailedEventArgs(driveRoot, config, GameLaunchFailureReason.UnexpectedError));
         }
         finally
         {

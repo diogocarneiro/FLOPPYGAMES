@@ -28,18 +28,77 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\Agent\{#AgentExeName}
-; Sem diálogo de escolha de idioma: além de ser um passo a menos para o utilizador,
-; o diálogo aparece ANTES de InitializeSetup correr, o que faria o modo /configure
-; mostrar sempre essa janela antes de conseguir agir. Português como único idioma
-; instalado corre logo sem perguntar; -LANG=english continua disponível a quem precisar.
+; Sem diálogo de escolha de idioma: além de ser um passo a menos para o utilizador, o diálogo
+; aparece ANTES de InitializeSetup correr, o que faria o modo /configure mostrar sempre essa
+; janela antes de conseguir agir. Como fica sempre silencioso, o idioma por omissão é
+; simplesmente o primeiro da lista [Languages] abaixo (Francês); -LANG=xx continua disponível
+; a quem quiser um dos outros 4 explicitamente.
 ShowLanguageDialog=no
 
 [Languages]
-Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+
+[CustomMessages]
+french.AutostartTaskDescription=Démarrer FloppyGames Agent avec Windows
+english.AutostartTaskDescription=Start FloppyGames Agent with Windows
+portuguese.AutostartTaskDescription=Iniciar o FloppyGames Agent com o Windows
+spanish.AutostartTaskDescription=Iniciar FloppyGames Agent con Windows
+italian.AutostartTaskDescription=Avvia FloppyGames Agent con Windows
+
+french.AdditionalOptionsGroup=Options supplémentaires :
+english.AdditionalOptionsGroup=Additional options:
+portuguese.AdditionalOptionsGroup=Opções adicionais:
+spanish.AdditionalOptionsGroup=Opciones adicionales:
+italian.AdditionalOptionsGroup=Opzioni aggiuntive:
+
+french.RunAfterInstallDescription=Démarrer FloppyGames Agent maintenant
+english.RunAfterInstallDescription=Start FloppyGames Agent now
+portuguese.RunAfterInstallDescription=Iniciar o FloppyGames Agent agora
+spanish.RunAfterInstallDescription=Iniciar FloppyGames Agent ahora
+italian.RunAfterInstallDescription=Avvia FloppyGames Agent ora
+
+french.ConfigureNotInstalled=FloppyGames n'est pas encore installé. Lance d'abord l'installateur normalement.
+english.ConfigureNotInstalled=FloppyGames isn't installed yet. Run the installer normally first.
+portuguese.ConfigureNotInstalled=O FloppyGames ainda não está instalado. Corre o instalador normalmente primeiro.
+spanish.ConfigureNotInstalled=FloppyGames aún no está instalado. Ejecuta primero el instalador normalmente.
+italian.ConfigureNotInstalled=FloppyGames non è ancora installato. Esegui prima il programma di installazione normalmente.
+
+french.ConfigureExeMissingFormat=FloppyGames semble installé, mais %1 est introuvable.
+english.ConfigureExeMissingFormat=FloppyGames appears to be installed, but %1 wasn't found.
+portuguese.ConfigureExeMissingFormat=O FloppyGames parece estar instalado, mas não encontrei %1.
+spanish.ConfigureExeMissingFormat=FloppyGames parece estar instalado, pero no se encontró %1.
+italian.ConfigureExeMissingFormat=FloppyGames sembra installato, ma non è stato trovato %1.
+
+french.ConfigureAutostartActiveAsk=Le démarrage automatique de FloppyGames Agent est ACTIVÉ.%nVeux-tu le désactiver ?
+english.ConfigureAutostartActiveAsk=FloppyGames Agent autostart is ON.%nDo you want to turn it off?
+portuguese.ConfigureAutostartActiveAsk=O arranque automático do FloppyGames Agent está ATIVO.%nQueres desativá-lo?
+spanish.ConfigureAutostartActiveAsk=El inicio automático de FloppyGames Agent está ACTIVADO.%n¿Quieres desactivarlo?
+italian.ConfigureAutostartActiveAsk=L'avvio automatico di FloppyGames Agent è ATTIVO.%nVuoi disattivarlo?
+
+french.ConfigureAutostartDisabledMsg=Démarrage automatique désactivé.
+english.ConfigureAutostartDisabledMsg=Autostart turned off.
+portuguese.ConfigureAutostartDisabledMsg=Arranque automático desativado.
+spanish.ConfigureAutostartDisabledMsg=Inicio automático desactivado.
+italian.ConfigureAutostartDisabledMsg=Avvio automatico disattivato.
+
+french.ConfigureAutostartInactiveAsk=Le démarrage automatique de FloppyGames Agent est DÉSACTIVÉ.%nVeux-tu l'activer ?
+english.ConfigureAutostartInactiveAsk=FloppyGames Agent autostart is OFF.%nDo you want to turn it on?
+portuguese.ConfigureAutostartInactiveAsk=O arranque automático do FloppyGames Agent está INATIVO.%nQueres ativá-lo?
+spanish.ConfigureAutostartInactiveAsk=El inicio automático de FloppyGames Agent está DESACTIVADO.%n¿Quieres activarlo?
+italian.ConfigureAutostartInactiveAsk=L'avvio automatico di FloppyGames Agent è DISATTIVATO.%nVuoi attivarlo?
+
+french.ConfigureAutostartEnabledMsg=Démarrage automatique activé.
+english.ConfigureAutostartEnabledMsg=Autostart turned on.
+portuguese.ConfigureAutostartEnabledMsg=Arranque automático ativado.
+spanish.ConfigureAutostartEnabledMsg=Inicio automático activado.
+italian.ConfigureAutostartEnabledMsg=Avvio automatico attivato.
 
 [Tasks]
-Name: "autostart"; Description: "Iniciar o FloppyGames Agent com o Windows"; GroupDescription: "Opções adicionais:"
+Name: "autostart"; Description: "{cm:AutostartTaskDescription}"; GroupDescription: "{cm:AdditionalOptionsGroup}"
 
 [Files]
 Source: "publish\Agent\*"; DestDir: "{app}\Agent"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -58,7 +117,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
     ValueName: "FloppyGamesAgent"; ValueData: """{app}\Agent\{#AgentExeName}"""; Tasks: autostart
 
 [Run]
-Filename: "{app}\Agent\{#AgentExeName}"; Description: "Iniciar o FloppyGames Agent agora"; \
+Filename: "{app}\Agent\{#AgentExeName}"; Description: "{cm:RunAfterInstallDescription}"; \
     Flags: postinstall nowait skipifsilent
 
 [Code]
@@ -113,16 +172,14 @@ begin
   InstallPath := GetInstalledAppPath();
   if InstallPath = '' then
   begin
-    MsgBox('O FloppyGames ainda não está instalado. Corre o instalador normalmente primeiro.',
-      mbError, MB_OK);
+    MsgBox(CustomMessage('ConfigureNotInstalled'), mbError, MB_OK);
     Exit;
   end;
 
   ExePath := AddBackslash(InstallPath) + 'Agent\{#AgentExeName}';
   if not FileExists(ExePath) then
   begin
-    MsgBox('O FloppyGames parece estar instalado, mas não encontrei ' + ExePath + '.',
-      mbError, MB_OK);
+    MsgBox(Format(CustomMessage('ConfigureExeMissingFormat'), [ExePath]), mbError, MB_OK);
     Exit;
   end;
 
@@ -130,24 +187,20 @@ begin
 
   if IsCurrentlyEnabled then
   begin
-    MsgResult := MsgBox(
-      'O arranque automático do FloppyGames Agent está ATIVO.' + #13#10 + 'Queres desativá-lo?',
-      mbConfirmation, MB_YESNO);
+    MsgResult := MsgBox(CustomMessage('ConfigureAutostartActiveAsk'), mbConfirmation, MB_YESNO);
     if MsgResult = IDYES then
     begin
       RegDeleteValue(HKCU, RunKeyPath, RunValueName);
-      MsgBox('Arranque automático desativado.', mbInformation, MB_OK);
+      MsgBox(CustomMessage('ConfigureAutostartDisabledMsg'), mbInformation, MB_OK);
     end;
   end
   else
   begin
-    MsgResult := MsgBox(
-      'O arranque automático do FloppyGames Agent está INATIVO.' + #13#10 + 'Queres ativá-lo?',
-      mbConfirmation, MB_YESNO);
+    MsgResult := MsgBox(CustomMessage('ConfigureAutostartInactiveAsk'), mbConfirmation, MB_YESNO);
     if MsgResult = IDYES then
     begin
       RegWriteStringValue(HKCU, RunKeyPath, RunValueName, '"' + ExePath + '"');
-      MsgBox('Arranque automático ativado.', mbInformation, MB_OK);
+      MsgBox(CustomMessage('ConfigureAutostartEnabledMsg'), mbInformation, MB_OK);
     end;
   end;
 end;

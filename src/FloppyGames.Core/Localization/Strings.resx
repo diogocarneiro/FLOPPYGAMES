@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Splash -->
+  <data name="Splash_Preparing" xml:space="preserve"><value>Préparation...</value></data>
+  <data name="Splash_FloppyDetected" xml:space="preserve"><value>DISQUETTE DÉTECTÉE</value></data>
+  <data name="Splash_UsbDetected" xml:space="preserve"><value>CLÉ USB DÉTECTÉE</value></data>
+  <data name="Splash_StatSupport" xml:space="preserve"><value>SUPPORT</value></data>
+  <data name="Splash_StatBuild" xml:space="preserve"><value>BUILD</value></data>
+  <data name="Splash_StatUpdated" xml:space="preserve"><value>MIS À JOUR</value></data>
+  <data name="Splash_StatPlaytime" xml:space="preserve"><value>TEMPS DE JEU</value></data>
+  <data name="Splash_StatLastSession" xml:space="preserve"><value>DERNIÈRE SESSION</value></data>
+  <data name="Splash_StatAchievements" xml:space="preserve"><value>SUCCÈS</value></data>
+  <data name="Splash_Checking" xml:space="preserve"><value>vérification...</value></data>
+  <data name="Splash_Installed" xml:space="preserve"><value>installé</value></data>
+  <data name="Splash_NotInstalled" xml:space="preserve"><value>non installé</value></data>
+  <data name="Splash_UnknownDate" xml:space="preserve"><value>inconnue</value></data>
+  <data name="Splash_PlaytimeUnavailable" xml:space="preserve"><value>non disponible</value></data>
+  <data name="Splash_LaunchingSteam" xml:space="preserve"><value>Ouverture de Steam...</value></data>
+  <data name="Splash_LaunchingEpic" xml:space="preserve"><value>Ouverture d'Epic Games Launcher...</value></data>
+  <data name="Splash_LaunchingGog" xml:space="preserve"><value>Ouverture du jeu...</value></data>
+  <data name="Splash_LaunchingGeneric" xml:space="preserve"><value>Ouverture...</value></data>
+  <data name="Splash_GameRunning" xml:space="preserve"><value>{0} en cours d'exécution.</value></data>
+
+  <!-- MainWindow (Agent) -->
+  <data name="MainWindow_Subtitle" xml:space="preserve"><value>Surveille les supports amovibles à la recherche de GAME.INI — insère ou retire un support pour voir l'état ici.</value></data>
+  <data name="MainWindow_Watching" xml:space="preserve"><value>Surveillance des unités amovibles...</value></data>
+  <data name="MainWindow_MediaInserted" xml:space="preserve"><value>Disquette insérée dans {0} : {1} ({2}, processus {3}).</value></data>
+  <data name="MainWindow_MediaRemoved" xml:space="preserve"><value>Disquette retirée de {0} : {1}.</value></data>
+  <data name="MainWindow_InvalidGameIni" xml:space="preserve"><value>GAME.INI invalide sur {0} : {1}</value></data>
+  <data name="MainWindow_Launching" xml:space="preserve"><value>Lancement de {0}...</value></data>
+  <data name="MainWindow_LaunchConfirmed" xml:space="preserve"><value>{0} confirmé en cours d'exécution.</value></data>
+  <data name="MainWindow_LaunchFailed" xml:space="preserve"><value>Échec du lancement de {0} : {1}</value></data>
+  <data name="MainWindow_GameStopped" xml:space="preserve"><value>{0} terminé.</value></data>
+
+  <!-- Settings window -->
+  <data name="Settings_Autostart" xml:space="preserve"><value>Démarrer FloppyGames Agent avec Windows</value></data>
+  <data name="Settings_FloppySound" xml:space="preserve"><value>Jouer le son du moteur à l'insertion d'une disquette physique</value></data>
+  <data name="Settings_CrtEffect" xml:space="preserve"><value>Effet CRT/lignes de balayage animé sur l'écran de démarrage</value></data>
+  <data name="Settings_LanguageLabel" xml:space="preserve"><value>Langue</value></data>
+  <data name="Settings_LanguageRestartNote" xml:space="preserve"><value>Redémarre l'application pour appliquer la nouvelle langue.</value></data>
+  <data name="Settings_LogsFolder" xml:space="preserve"><value>Dossier des journaux</value></data>
+  <data name="Settings_OpenButton" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="Settings_SteamApiKeyLabel" xml:space="preserve"><value>Clé Steam Web API (facultatif)</value></data>
+  <data name="Settings_SteamApiKeyDescription" xml:space="preserve"><value>Utilisée seulement pour afficher le nombre de succès sur l'écran de démarrage. Sans clé, cette ligne n'apparaît tout simplement pas — le reste de FloppyGames reste 100 % hors ligne.</value></data>
+  <data name="Settings_SaveButton" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="Settings_GetApiKeyLink" xml:space="preserve"><value>Obtenir une clé gratuite sur steamcommunity.com/dev/apikey</value></data>
+  <data name="Settings_AutostartEnabled" xml:space="preserve"><value>Démarrage automatique activé.</value></data>
+  <data name="Settings_AutostartDisabled" xml:space="preserve"><value>Démarrage automatique désactivé.</value></data>
+  <data name="Settings_ApiKeyRemoved" xml:space="preserve"><value>Clé supprimée — les succès disparaissent de l'écran de démarrage.</value></data>
+  <data name="Settings_ApiKeySaved" xml:space="preserve"><value>Clé enregistrée.</value></data>
+  <data name="Settings_FloppySoundEnabled" xml:space="preserve"><value>Son du moteur activé.</value></data>
+  <data name="Settings_FloppySoundDisabled" xml:space="preserve"><value>Son du moteur désactivé.</value></data>
+  <data name="Settings_CrtEffectEnabled" xml:space="preserve"><value>Effet CRT activé.</value></data>
+  <data name="Settings_CrtEffectDisabled" xml:space="preserve"><value>Effet CRT désactivé.</value></data>
+
+  <!-- Tray icon -->
+  <data name="Tray_OpenFloppyGames" xml:space="preserve"><value>Ouvrir FloppyGames</value></data>
+  <data name="Tray_OpenLogsFolder" xml:space="preserve"><value>Ouvrir le dossier des journaux</value></data>
+  <data name="Tray_OpenLabelStudio" xml:space="preserve"><value>Ouvrir Label Studio</value></data>
+  <data name="Tray_Settings" xml:space="preserve"><value>Paramètres...</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>Quitter</value></data>
+  <data name="Tray_Idle" xml:space="preserve"><value>FloppyGames — inactif</value></data>
+  <data name="Tray_Launching" xml:space="preserve"><value>FloppyGames — lancement du jeu...</value></data>
+  <data name="Tray_OneRunning" xml:space="preserve"><value>FloppyGames — 1 jeu en cours d'exécution</value></data>
+  <data name="Tray_ManyRunning" xml:space="preserve"><value>FloppyGames — {0} jeux en cours d'exécution</value></data>
+
+  <!-- LabelStudioLauncher -->
+  <data name="LabelStudioLauncher_NotInstalled" xml:space="preserve"><value>FloppyGames Label Studio n'est pas encore installé dans ce dossier.</value></data>
+
+  <!-- Launch failure reasons -->
+  <data name="LaunchFailed_Timeout" xml:space="preserve"><value>Délai dépassé en attendant le processus du jeu.</value></data>
+  <data name="LaunchFailed_MediaRemoved" xml:space="preserve"><value>Disquette retirée avant la confirmation du lancement.</value></data>
+  <data name="LaunchFailed_UnexpectedError" xml:space="preserve"><value>Erreur inattendue lors du lancement du jeu.</value></data>
+
+  <!-- Label Studio MainWindow -->
+  <data name="LS_Step1" xml:space="preserve"><value>1 · CHOISIR LE JEU</value></data>
+  <data name="LS_Platform" xml:space="preserve"><value>Plateforme</value></data>
+  <data name="LS_InstalledGames" xml:space="preserve"><value>Jeux installés</value></data>
+  <data name="LS_Step2" xml:space="preserve"><value>2 · DÉTAILS</value></data>
+  <data name="LS_TitleField" xml:space="preserve"><value>Titre</value></data>
+  <data name="LS_ProcessField" xml:space="preserve"><value>Processus (exécutable à surveiller)</value></data>
+  <data name="LS_DescriptionField" xml:space="preserve"><value>Description (facultatif, affichée sur l'écran de démarrage)</value></data>
+  <data name="LS_AdvancedOptions" xml:space="preserve"><value>Options avancées</value></data>
+  <data name="LS_WatchTimeoutField" xml:space="preserve"><value>Délai d'attente du lancement (s)</value></data>
+  <data name="LS_LaunchDelayField" xml:space="preserve"><value>Délai avant lancement (s)</value></data>
+  <data name="LS_GracefulShutdownField" xml:space="preserve"><value>Fermeture en douceur avant de forcer</value></data>
+  <data name="LS_Step3" xml:space="preserve"><value>3 · JAQUETTE</value></data>
+  <data name="LS_Step4" xml:space="preserve"><value>4 · ÉCRIRE SUR LE SUPPORT</value></data>
+  <data name="LS_TargetDrive" xml:space="preserve"><value>Unité de destination</value></data>
+  <data name="LS_RefreshButton" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="LS_WriteButton" xml:space="preserve"><value>Écrire sur le support</value></data>
+  <data name="LS_PrintButton" xml:space="preserve"><value>Dessiner / imprimer l'étiquette...</value></data>
+  <data name="LS_ChooseLocalCoverButton" xml:space="preserve"><value>Choisir une image locale...</value></data>
+  <data name="LS_LoadingLibrary" xml:space="preserve"><value>Lecture de la bibliothèque {0}...</value></data>
+  <data name="LS_NoGamesFound" xml:space="preserve"><value>Aucun jeu trouvé — vérifie que {0} est installé et que tu as des jeux installés.</value></data>
+  <data name="LS_GamesFoundOne" xml:space="preserve"><value>1 jeu trouvé.</value></data>
+  <data name="LS_GamesFoundMany" xml:space="preserve"><value>{0} jeux trouvés.</value></data>
+  <data name="LS_LoadLibraryFailed" xml:space="preserve"><value>Échec de la lecture de la bibliothèque — voir les journaux.</value></data>
+  <data name="LS_IdentifierLabel" xml:space="preserve"><value>Identifiant</value></data>
+  <data name="LS_IdentifierLabelSteam" xml:space="preserve"><value>AppID (Steam)</value></data>
+  <data name="LS_IdentifierLabelEpic" xml:space="preserve"><value>Identifiant (Epic : namespace:item:app)</value></data>
+  <data name="LS_IdentifierLabelGog" xml:space="preserve"><value>ID (GOG)</value></data>
+  <data name="LS_FetchingSteamCover" xml:space="preserve"><value>Récupération de la jaquette Steam...</value></data>
+  <data name="LS_NoAutoCoverForPlatform" xml:space="preserve"><value>Pas de jaquette automatique pour {0} — choisis une image locale ci-dessous.</value></data>
+  <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Aucune jaquette trouvée sur Steam — choisis une image locale ci-dessous.</value></data>
+  <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Choisir une jaquette</value></data>
+  <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Images</value></data>
+  <data name="LS_ImageReadFailed" xml:space="preserve"><value>Impossible de lire cette image.</value></data>
+  <data name="LS_ChooseTargetDrive" xml:space="preserve"><value>Choisis une unité de destination.</value></data>
+  <data name="LS_TitleProcessRequired" xml:space="preserve"><value>Le titre et le processus sont obligatoires.</value></data>
+  <data name="LS_WatchTimeoutInvalid" xml:space="preserve"><value>Le délai d'attente du lancement doit être un entier positif.</value></data>
+  <data name="LS_LaunchDelayInvalid" xml:space="preserve"><value>Le délai avant lancement doit être un entier non négatif.</value></data>
+  <data name="LS_WriteCancelled" xml:space="preserve"><value>Écriture annulée.</value></data>
+  <data name="LS_WriteSuccess" xml:space="preserve"><value>Disquette prête : « {0} » écrit sur {1}.</value></data>
+  <data name="LS_WriteFailed" xml:space="preserve"><value>Échec de l'écriture sur le support — voir les journaux.</value></data>
+
+  <!-- LabelPrintWindow -->
+  <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimer...</value></data>
+  <data name="LPW_ExportPngButton" xml:space="preserve"><value>Exporter en PNG...</value></data>
+  <data name="LPW_PrintedSuccess" xml:space="preserve"><value>Envoyé à l'imprimante.</value></data>
+  <data name="LPW_ExportedSuccess" xml:space="preserve"><value>Exporté vers {0}.</value></data>
+  <data name="LPW_PngImageWord" xml:space="preserve"><value>Image PNG</value></data>
+
+  <!-- Core: FloppyMediaWriter -->
+  <data name="Core_MediaWriter_NotRemovable" xml:space="preserve"><value>L'unité sélectionnée n'est pas amovible.</value></data>
+  <data name="Core_MediaWriter_InsufficientSpace" xml:space="preserve"><value>Espace insuffisant : {0} nécessaires, {1} disponibles.</value></data>
+  <data name="Core_MediaWriter_ExistingGameIni" xml:space="preserve"><value>Ce support a déjà un GAME.INI — l'écriture va le remplacer.</value></data>
+
+  <!-- Core: GameIniParser -->
+  <data name="Core_Parser_UnknownPlatform" xml:space="preserve"><value>[Game] PLATFORM inconnue : « {0} » (valeurs acceptées : STEAM, EPIC, GOG).</value></data>
+  <data name="Core_Parser_MissingRequiredField" xml:space="preserve"><value>Champ obligatoire manquant : [Game] {0}.</value></data>
+  <data name="Core_Parser_MustBePositiveInt" xml:space="preserve"><value>[Game] {0} doit être un entier positif (valeur reçue : « {1} »).</value></data>
+  <data name="Core_Parser_OptionsMustBePositiveInt" xml:space="preserve"><value>[Options] {0} doit être un entier positif (valeur reçue : « {1} »).</value></data>
+  <data name="Core_Parser_OptionsMustBeNonNegativeInt" xml:space="preserve"><value>[Options] {0} doit être un entier non négatif (valeur reçue : « {1} »).</value></data>
+  <data name="Core_Parser_OptionsMustBeBool" xml:space="preserve"><value>[Options] {0} doit être « true » ou « false » (valeur reçue : « {1} »).</value></data>
+</root>

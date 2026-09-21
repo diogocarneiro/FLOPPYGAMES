@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,6 +7,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FloppyGames.Core.Configuration;
+using FloppyGames.Core.Localization;
 using FloppyGames.Core.Media;
 
 namespace FloppyGames.Agent;
@@ -38,7 +40,7 @@ public partial class SplashWindow : Window
     public void SetGame(string title, string? description, string? coverPath, MediaKind mediaKind, GamePlatform platform)
     {
         TitleText.Text = title;
-        StatusText.Text = "A preparar...";
+        StatusText.Text = Strings.Splash_Preparing;
 
         DescriptionText.Text = description ?? string.Empty;
         DescriptionText.Visibility = string.IsNullOrWhiteSpace(description) ? Visibility.Collapsed : Visibility.Visible;
@@ -46,14 +48,14 @@ public partial class SplashWindow : Window
         var isFloppy = mediaKind == MediaKind.Floppy;
         FloppyIcon.Visibility = isFloppy ? Visibility.Visible : Visibility.Collapsed;
         UsbIcon.Visibility = isFloppy ? Visibility.Collapsed : Visibility.Visible;
-        MediaKindLabel.Text = SpaceOutLetters(isFloppy ? "DISQUETE DETETADA" : "PEN USB DETETADA");
+        MediaKindLabel.Text = SpaceOutLetters(isFloppy ? Strings.Splash_FloppyDetected : Strings.Splash_UsbDetected);
 
-        SizeText.Text = FormatStatLine("SUPORTE", "a verificar...");
-        InstalledText.Text = FormatStatLine(platform.ToString().ToUpperInvariant(), "a verificar...");
-        BuildText.Text = FormatStatLine("BUILD", "a verificar...");
-        UpdatedText.Text = FormatStatLine("ATUALIZADO", "a verificar...");
-        PlaytimeText.Text = FormatStatLine("TEMPO DE JOGO", "a verificar...");
-        LastSessionText.Text = FormatStatLine("ÚLTIMA SESSÃO", "a verificar...");
+        SizeText.Text = FormatStatLine(Strings.Splash_StatSupport, Strings.Splash_Checking);
+        InstalledText.Text = FormatStatLine(platform.ToString().ToUpperInvariant(), Strings.Splash_Checking);
+        BuildText.Text = FormatStatLine(Strings.Splash_StatBuild, Strings.Splash_Checking);
+        UpdatedText.Text = FormatStatLine(Strings.Splash_StatUpdated, Strings.Splash_Checking);
+        PlaytimeText.Text = FormatStatLine(Strings.Splash_StatPlaytime, Strings.Splash_Checking);
+        LastSessionText.Text = FormatStatLine(Strings.Splash_StatLastSession, Strings.Splash_Checking);
         BuildText.Visibility = Visibility.Visible;
         UpdatedText.Visibility = Visibility.Visible;
         PlaytimeText.Visibility = Visibility.Visible;
@@ -120,22 +122,22 @@ public partial class SplashWindow : Window
     /// </summary>
     public void SetSummary(GameLaunchSummary summary)
     {
-        SizeText.Text = FormatStatLine("SUPORTE", FormatBytes(summary.MediaSizeBytes));
+        SizeText.Text = FormatStatLine(Strings.Splash_StatSupport, FormatBytes(summary.MediaSizeBytes));
 
         var platformLabel = summary.Platform.ToString().ToUpperInvariant();
         var installedValue = summary.IsInstalled
-            ? summary.InstalledSizeBytes is { } sizeBytes ? $"instalado ({FormatBytes(sizeBytes)})" : "instalado"
-            : "não instalado";
+            ? summary.InstalledSizeBytes is { } sizeBytes ? $"{Strings.Splash_Installed} ({FormatBytes(sizeBytes)})" : Strings.Splash_Installed
+            : Strings.Splash_NotInstalled;
         InstalledText.Text = FormatStatLine(platformLabel, installedValue);
 
-        SetOptionalStatLine(BuildText, "BUILD", summary.BuildId);
-        SetOptionalStatLine(UpdatedText, "ATUALIZADO", summary.LastUpdatedUtc is null ? null : FormatDate(summary.LastUpdatedUtc));
-        SetOptionalStatLine(PlaytimeText, "TEMPO DE JOGO", summary.PlaytimeMinutes is null ? null : FormatPlaytime(summary.PlaytimeMinutes));
-        SetOptionalStatLine(LastSessionText, "ÚLTIMA SESSÃO", summary.LastPlayedUtc is null ? null : FormatDate(summary.LastPlayedUtc));
+        SetOptionalStatLine(BuildText, Strings.Splash_StatBuild, summary.BuildId);
+        SetOptionalStatLine(UpdatedText, Strings.Splash_StatUpdated, summary.LastUpdatedUtc is null ? null : FormatDate(summary.LastUpdatedUtc));
+        SetOptionalStatLine(PlaytimeText, Strings.Splash_StatPlaytime, summary.PlaytimeMinutes is null ? null : FormatPlaytime(summary.PlaytimeMinutes));
+        SetOptionalStatLine(LastSessionText, Strings.Splash_StatLastSession, summary.LastPlayedUtc is null ? null : FormatDate(summary.LastPlayedUtc));
 
         if (summary.Achievements is { } achievements)
         {
-            AchievementsText.Text = FormatStatLine("CONQUISTAS", $"{achievements.Unlocked}/{achievements.Total}");
+            AchievementsText.Text = FormatStatLine(Strings.Splash_StatAchievements, $"{achievements.Unlocked}/{achievements.Total}");
             AchievementsText.Visibility = Visibility.Visible;
         }
         else
@@ -219,16 +221,19 @@ public partial class SplashWindow : Window
 
     private static string SpaceOutLetters(string text) => string.Join(' ', text.ToCharArray());
 
-    private static string FormatStatLine(string label, string value) => string.Format("{0,-15}{1}", label, value);
+    // 18 caracteres cobre a label mais longa entre os 5 idiomas ("DERNIÈRE SESSION", FR, 17 chars)
+    // com pelo menos um espaço de intervalo — labels mais compridas simplesmente não ficam alinhadas.
+    private static string FormatStatLine(string label, string value) => string.Format("{0,-18}{1}", label, value);
 
-    private static string FormatDate(DateTime? utc) =>
-        utc is null ? "desconhecida" : utc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    private static string FormatDate(DateTime? utc) => utc is null
+        ? Strings.Splash_UnknownDate
+        : utc.Value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
 
     private static string FormatPlaytime(long? minutes)
     {
         if (minutes is null)
         {
-            return "não disponível";
+            return Strings.Splash_PlaytimeUnavailable;
         }
 
         var hours = minutes.Value / 60;

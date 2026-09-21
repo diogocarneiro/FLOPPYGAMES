@@ -102,6 +102,15 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   por acessibilidade (fotossensibilidade). Toggle em Definições (`AgentSettings.CrtEffectEnabled`,
   default ligado).
 - [ ] Catálogo partilhável de `GAME.INI` + capas (comunidade), para não obrigar cada utilizador a recriar o mapeamento AppID → capa.
+- [x] Suporte a 5 idiomas (Francês por omissão, Inglês, Português, Espanhol, Italiano) em toda a
+  app — Agent, Label Studio e instalador. Um único conjunto de recursos `.resx` partilhado em
+  `Core/Localization/` (Francês neutro + 4 satélites, mecanismo standard do .NET), com
+  `AgentSettings.Language` partilhado pelas duas apps (o Label Studio não tem seletor próprio, só
+  lê o valor escolhido nas Definições do Agent). `GameLaunchFailedEventArgs.Reason` deixou de ser
+  uma string em português e passou a `GameLaunchFailureReason` (enum) — o `Core` mantém-se
+  agnóstico de idioma, quem traduz é a UI. Instalador: os 5 idiomas nativos do Inno Setup, Francês
+  primeiro na lista (continua sem diálogo de escolha, para o `/configure` não mostrar janelas), com
+  as mensagens do modo `/configure` movidas para `[CustomMessages]`.
 - [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic
   (biblioteca + lançamento) **verificado** contra dados reais de uma instalação existente
   (`%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item`, URI de lançamento documentado

@@ -34,7 +34,6 @@ public class FloppyMediaWriterTests
         var result = writer.Check(DriveRoot, Config, coverBytes: new byte[1000]);
 
         Assert.Equal(MediaWriteCheckStatus.Blocked, result.Status);
-        Assert.Contains("Espaço insuficiente", result.Message);
     }
 
     [Fact]

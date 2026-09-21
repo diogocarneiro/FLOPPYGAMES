@@ -1,3 +1,6 @@
+using FloppyGames.Core.Localization;
+using FloppyGames.Core.Settings;
+
 namespace FloppyGames.Agent;
 
 public partial class App : System.Windows.Application
@@ -8,6 +11,8 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        LocalizationManager.Apply(new AgentSettingsStore().Load().Language);
 
         _mainWindow = new MainWindow();
         _trayIcon = new TrayIconController(_mainWindow, _mainWindow.SessionManager);

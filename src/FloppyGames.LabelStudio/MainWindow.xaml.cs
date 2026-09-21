@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using FloppyGames.Core.Configuration;
+using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
 using FloppyGames.Core.Platforms;
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ApplyStaticText();
 
         _logger = LoggingBootstrapper.CreateLogger("LabelStudio");
         _logger.Information("FloppyGames Label Studio iniciado.");
@@ -48,6 +50,28 @@ public partial class MainWindow : Window
         // acima estarem prontos — se viesse do XAML, o SelectionChanged correria durante o
         // InitializeComponent(), antes destes campos serem atribuídos.
         PlatformCombo.SelectedIndex = 0;
+    }
+
+    private void ApplyStaticText()
+    {
+        Step1Header.Text = Strings.LS_Step1;
+        PlatformLabel.Text = Strings.LS_Platform;
+        InstalledGamesLabel.Text = Strings.LS_InstalledGames;
+        Step2Header.Text = Strings.LS_Step2;
+        TitleFieldLabel.Text = Strings.LS_TitleField;
+        ProcessFieldLabel.Text = Strings.LS_ProcessField;
+        DescriptionFieldLabel.Text = Strings.LS_DescriptionField;
+        AdvancedOptionsExpander.Header = Strings.LS_AdvancedOptions;
+        WatchTimeoutFieldLabel.Text = Strings.LS_WatchTimeoutField;
+        LaunchDelayFieldLabel.Text = Strings.LS_LaunchDelayField;
+        GracefulShutdownBox.Content = Strings.LS_GracefulShutdownField;
+        Step3Header.Text = Strings.LS_Step3;
+        Step4Header.Text = Strings.LS_Step4;
+        TargetDriveLabel.Text = Strings.LS_TargetDrive;
+        RefreshDrivesButton.Content = Strings.LS_RefreshButton;
+        WriteButton.Content = Strings.LS_WriteButton;
+        PrintLabelButton.Content = Strings.LS_PrintButton;
+        ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
     }
 
     private GamePlatform SelectedPlatform() => PlatformCombo.SelectedIndex switch
@@ -71,7 +95,7 @@ public partial class MainWindow : Window
     private async Task LoadGamesAsync()
     {
         var platform = SelectedPlatform();
-        GamesStatusText.Text = $"A ler a biblioteca {PlatformDisplayName(platform)}...";
+        GamesStatusText.Text = Strings.LS_LoadingLibrary(PlatformDisplayName(platform));
 
         try
         {
@@ -79,14 +103,17 @@ public partial class MainWindow : Window
             _allGames = [.. games];
 
             ApplyFilter(SearchBox.Text);
-            GamesStatusText.Text = _allGames.Count == 0
-                ? $"Nenhum jogo encontrado — confirma que o {PlatformDisplayName(platform)} está instalado e tens jogos instalados."
-                : $"{_allGames.Count} jogo(s) encontrado(s).";
+            GamesStatusText.Text = _allGames.Count switch
+            {
+                0 => Strings.LS_NoGamesFound(PlatformDisplayName(platform)),
+                1 => Strings.LS_GamesFoundOne,
+                _ => Strings.LS_GamesFoundMany(_allGames.Count),
+            };
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Falha ao ler a biblioteca {Platform}.", platform);
-            GamesStatusText.Text = "Falha ao ler a biblioteca — ver logs.";
+            GamesStatusText.Text = Strings.LS_LoadLibraryFailed;
         }
     }
 
@@ -137,21 +164,21 @@ public partial class MainWindow : Window
         // escolha manual de imagem local. Sem isto ficar explícito, a caixa vazia parece avariada.
         if (game.Platform == GamePlatform.Steam && game.SteamAppId is { } appId)
         {
-            ShowNoCoverMessage("A obter capa da Steam...");
+            ShowNoCoverMessage(Strings.LS_FetchingSteamCover);
             _ = LoadCoverAsync(appId);
         }
         else
         {
-            ShowNoCoverMessage($"Sem capa automática para {PlatformDisplayName(game.Platform)} — escolhe uma imagem local abaixo.");
+            ShowNoCoverMessage(Strings.LS_NoAutoCoverForPlatform(PlatformDisplayName(game.Platform)));
         }
     }
 
     private static string IdentifierLabelFor(GamePlatform platform) => platform switch
     {
-        GamePlatform.Steam => "AppID (Steam)",
-        GamePlatform.Epic => "Identificador (Epic: namespace:item:app)",
-        GamePlatform.Gog => "ID (GOG)",
-        _ => "Identificador",
+        GamePlatform.Steam => Strings.LS_IdentifierLabelSteam,
+        GamePlatform.Epic => Strings.LS_IdentifierLabelEpic,
+        GamePlatform.Gog => Strings.LS_IdentifierLabelGog,
+        _ => Strings.LS_IdentifierLabel,
     };
 
     private static string FormatIdentifier(DiscoveredGame game) => game.Platform switch
@@ -188,7 +215,7 @@ public partial class MainWindow : Window
 
             if (bytes is null)
             {
-                ShowNoCoverMessage("Sem capa encontrada na Steam — escolhe uma imagem local abaixo.");
+                ShowNoCoverMessage(Strings.LS_NoCoverFoundSteam);
                 return;
             }
 
@@ -218,8 +245,8 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Imagens (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp",
-            Title = "Escolher capa",
+            Filter = $"{Strings.LS_ImagesFilterWord} (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp",
+            Title = Strings.LS_ChooseCoverDialogTitle,
         };
 
         if (dialog.ShowDialog() != true)
@@ -237,7 +264,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.Warning(ex, "Falha ao ler a imagem local escolhida.");
-            MessageBox.Show("Não foi possível ler essa imagem.", "FloppyGames", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(Strings.LS_ImageReadFailed, "FloppyGames", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -272,25 +299,25 @@ public partial class MainWindow : Window
 
         if (DriveCombo.SelectedItem is not string driveRoot)
         {
-            WriteStatusText.Text = "Escolhe uma unidade destino.";
+            WriteStatusText.Text = Strings.LS_ChooseTargetDrive;
             return;
         }
 
         if (string.IsNullOrWhiteSpace(TitleBox.Text) || string.IsNullOrWhiteSpace(ProcessBox.Text))
         {
-            WriteStatusText.Text = "Título e Processo são obrigatórios.";
+            WriteStatusText.Text = Strings.LS_TitleProcessRequired;
             return;
         }
 
         if (!int.TryParse(WatchTimeoutBox.Text, out var watchTimeout) || watchTimeout <= 0)
         {
-            WriteStatusText.Text = "Timeout de arranque tem de ser um número inteiro positivo.";
+            WriteStatusText.Text = Strings.LS_WatchTimeoutInvalid;
             return;
         }
 
         if (!int.TryParse(LaunchDelayBox.Text, out var launchDelay) || launchDelay < 0)
         {
-            WriteStatusText.Text = "Atraso de lançamento tem de ser um número inteiro não negativo.";
+            WriteStatusText.Text = Strings.LS_LaunchDelayInvalid;
             return;
         }
 
@@ -324,7 +351,7 @@ public partial class MainWindow : Window
             var confirmed = MessageBox.Show(check.Message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirmed != MessageBoxResult.Yes)
             {
-                WriteStatusText.Text = "Escrita cancelada.";
+                WriteStatusText.Text = Strings.LS_WriteCancelled;
                 return;
             }
         }
@@ -332,14 +359,14 @@ public partial class MainWindow : Window
         try
         {
             _mediaWriter.Write(driveRoot, config, _coverBytes, config.Cover);
-            WriteStatusText.Text = $"Disquete pronta: \"{config.Title}\" escrito em {driveRoot}.";
+            WriteStatusText.Text = Strings.LS_WriteSuccess(config.Title, driveRoot);
             _logger.Information(
                 "GAME.INI escrito em {Drive} para {Title} ({Platform}).", driveRoot, config.Title, config.Platform);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.Error(ex, "Falha ao escrever para {Drive}.", driveRoot);
-            WriteStatusText.Text = "Falha ao escrever para o suporte — ver logs.";
+            WriteStatusText.Text = Strings.LS_WriteFailed;
         }
     }
 

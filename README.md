@@ -15,6 +15,7 @@ O suporte a **pen USB dedicada** existe como alternativa extra — útil para qu
 - [Requisitos](#requisitos)
 - [Instalação](#instalação)
 - [Arranque Automático com o Windows](#arranque-automático-com-o-windows)
+- [Idiomas](#idiomas)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Stack Tecnológica](#stack-tecnológica)
 - [Roadmap](#roadmap)
@@ -211,6 +212,25 @@ O arranque automático do Agent pode ser ativado/desativado em qualquer altura, 
 - Depois de instalado, através do menu da bandeja do sistema (*FloppyGames → Definições → Iniciar com o Windows*) ou executando `FloppyGamesSetup.exe /configure`.
 
 Tecnicamente, o toggle escreve/remove uma entrada em `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, evitando a necessidade de privilégios de administrador.
+
+## Idiomas
+
+O Agent, o Label Studio e o instalador suportam 5 idiomas — **Francês** (por omissão), Inglês,
+Português, Espanhol e Italiano:
+
+- Muda-se num único sítio: menu da bandeja → *Definições* → combo "Idioma" (mostra cada idioma no
+  seu próprio nome nativo). O Label Studio não tem seletor próprio — lê o mesmo valor de
+  `settings.json`, para nunca ficar dessincronizado entre as duas apps. Uma alteração aplica-se no
+  próximo arranque de cada app (o texto é atribuído em código, não via *binding* dinâmico, por
+  isso não muda a quente numa janela já aberta).
+- O instalador também tem os 5 idiomas — Francês primeiro, por isso é o idioma por omissão sem
+  mostrar nenhum diálogo (`ShowLanguageDialog=no`, para o modo `FloppyGamesSetup.exe /configure`
+  continuar a não mostrar diálogos); `/LANG=english`, `/LANG=portuguese`, `/LANG=spanish` ou
+  `/LANG=italian` escolhem um dos outros explicitamente.
+- Implementação: um único conjunto de recursos `.resx` partilhado em `FloppyGames.Core`
+  (`Core/Localization/`), com Francês como recurso neutro e Inglês/Português/Espanhol/Italiano
+  como satélites — a mesma mecânica standard do .NET, sem nada por medida. Datas e números
+  (tamanhos, por exemplo) seguem também o estilo de cada idioma.
 
 ## Estrutura do Projeto
 

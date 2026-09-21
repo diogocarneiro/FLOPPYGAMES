@@ -36,6 +36,9 @@ instalador e o toggle nas Definições do Agent leiam/escrevam a mesma entrada.
   passar pela página de escolha de pasta. O modo `/configure` corre `InitializeSetup` e precisa do
   caminho de instalação *antes* disso, por isso lê-o diretamente da própria chave de desinstalação que
   o Inno Setup já escreve (`HKCU\...\Uninstall\{AppId}_is1\InstallLocation`), em vez de usar `{app}`.
-- **O diálogo de escolha de idioma aparece antes de `InitializeSetup` correr** — com dois idiomas
-  configurados, `/configure` mostraria sempre essa janela antes de conseguir agir. Resolvido com
-  `ShowLanguageDialog=no` (fica só em português, sem perguntar).
+- **O diálogo de escolha de idioma aparece antes de `InitializeSetup` correr** — com mais que um
+  idioma configurado, `/configure` mostraria sempre essa janela antes de conseguir agir. Resolvido
+  com `ShowLanguageDialog=no`: corre sempre silencioso, no primeiro idioma da lista `[Languages]`
+  (Francês). O instalador tem os 5 idiomas da app (Francês, Inglês, Português, Espanhol, Italiano);
+  `/LANG=xx` continua disponível para escolher um dos outros explicitamente. As mensagens do modo
+  `/configure` (os `MsgBox` no `[Code]`) vêm de `[CustomMessages]`, uma variante por idioma.

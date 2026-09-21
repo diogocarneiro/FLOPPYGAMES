@@ -1,5 +1,6 @@
 using System.Text;
 using FloppyGames.Core.Configuration;
+using FloppyGames.Core.Localization;
 
 namespace FloppyGames.Core.Media;
 
@@ -18,7 +19,7 @@ public sealed class FloppyMediaWriter
     {
         if (!_inspector.IsRemovableDrive(driveRoot))
         {
-            return MediaWriteCheck.Blocked("A unidade selecionada não é amovível.");
+            return MediaWriteCheck.Blocked(Strings.Core_MediaWriter_NotRemovable);
         }
 
         var iniBytes = Encoding.UTF8.GetByteCount(GameIniWriter.Write(config));
@@ -28,11 +29,11 @@ public sealed class FloppyMediaWriter
         if (freeBytes < requiredBytes)
         {
             return MediaWriteCheck.Blocked(
-                $"Espaço insuficiente: são precisos {FormatBytes(requiredBytes)}, há {FormatBytes(freeBytes)} livres.");
+                Strings.Core_MediaWriter_InsufficientSpace(FormatBytes(requiredBytes), FormatBytes(freeBytes)));
         }
 
         return _inspector.TryReadGameIni(driveRoot, out _)
-            ? MediaWriteCheck.NeedsConfirmation("Este suporte já tem um GAME.INI — escrever vai substituí-lo.")
+            ? MediaWriteCheck.NeedsConfirmation(Strings.Core_MediaWriter_ExistingGameIni)
             : MediaWriteCheck.Ready();
     }
 

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Forms;
 using FloppyGames.Core.Launch;
+using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 
 namespace FloppyGames.Agent;
@@ -27,17 +28,17 @@ public sealed class TrayIconController : IDisposable
         _icons = Enum.GetValues<TrayIconState>().ToDictionary(state => state, TrayIconFactory.Create);
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Abrir FloppyGames", null, (_, _) => ShowMainWindow());
-        menu.Items.Add("Abrir pasta de logs", null, (_, _) => OpenLogsFolder());
-        menu.Items.Add("Abrir Label Studio", null, (_, _) => LabelStudioLauncher.TryLaunch());
-        menu.Items.Add("Definições...", null, (_, _) => ShowSettings());
+        menu.Items.Add(Strings.Tray_OpenFloppyGames, null, (_, _) => ShowMainWindow());
+        menu.Items.Add(Strings.Tray_OpenLogsFolder, null, (_, _) => OpenLogsFolder());
+        menu.Items.Add(Strings.Tray_OpenLabelStudio, null, (_, _) => LabelStudioLauncher.TryLaunch());
+        menu.Items.Add(Strings.Tray_Settings, null, (_, _) => ShowSettings());
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Sair", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add(Strings.Tray_Exit, null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
 
         _notifyIcon = new NotifyIcon
         {
             Icon = _icons[TrayIconState.Idle],
-            Text = "FloppyGames — inativo",
+            Text = Strings.Tray_Idle,
             Visible = true,
             ContextMenuStrip = menu,
         };
@@ -117,10 +118,10 @@ public sealed class TrayIconController : IDisposable
 
             text = state switch
             {
-                TrayIconState.Loading => "FloppyGames — a lançar jogo...",
-                TrayIconState.Running when _activeSessions == 1 => "FloppyGames — 1 jogo em execução",
-                TrayIconState.Running => $"FloppyGames — {_activeSessions} jogos em execução",
-                _ => "FloppyGames — inativo",
+                TrayIconState.Loading => Strings.Tray_Launching,
+                TrayIconState.Running when _activeSessions == 1 => Strings.Tray_OneRunning,
+                TrayIconState.Running => Strings.Tray_ManyRunning(_activeSessions),
+                _ => Strings.Tray_Idle,
             };
         }
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using FloppyGames.Core.Localization;
 
 namespace FloppyGames.Agent;
 
@@ -24,7 +25,7 @@ internal static class LabelStudioLauncher
         }
 
         System.Windows.MessageBox.Show(
-            "O FloppyGames Label Studio ainda não está instalado nesta pasta.",
+            Strings.LabelStudioLauncher_NotInstalled,
             "FloppyGames",
             System.Windows.MessageBoxButton.OK,
             System.Windows.MessageBoxImage.Information);

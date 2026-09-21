@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using FloppyGames.Core.Localization;
 using Microsoft.Win32;
 
 namespace FloppyGames.LabelStudio;
@@ -13,6 +14,8 @@ public partial class LabelPrintWindow : Window
     public LabelPrintWindow(string title, BitmapSource? cover)
     {
         InitializeComponent();
+        PrintButton.Content = Strings.LPW_PrintButton;
+        ExportPngButton.Content = Strings.LPW_ExportPngButton;
         LabelTitleText.Text = title;
         LabelCoverImage.Source = cover;
     }
@@ -26,14 +29,14 @@ public partial class LabelPrintWindow : Window
         }
 
         printDialog.PrintVisual(LabelSurface, "FloppyGames — Label");
-        StatusText.Text = "Enviado para a impressora.";
+        StatusText.Text = Strings.LPW_PrintedSuccess;
     }
 
     private void OnExportPngClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new SaveFileDialog
         {
-            Filter = "Imagem PNG (*.png)|*.png",
+            Filter = $"{Strings.LPW_PngImageWord} (*.png)|*.png",
             FileName = "label.png",
         };
 
@@ -55,6 +58,6 @@ public partial class LabelPrintWindow : Window
         using var stream = File.Create(dialog.FileName);
         encoder.Save(stream);
 
-        StatusText.Text = $"Exportado para {dialog.FileName}.";
+        StatusText.Text = Strings.LPW_ExportedSuccess(dialog.FileName);
     }
 }

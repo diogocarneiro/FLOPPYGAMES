@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Navigation;
+using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Startup;
@@ -18,6 +19,18 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
 
+        AutostartCheckBox.Content = Strings.Settings_Autostart;
+        FloppySoundCheckBox.Content = Strings.Settings_FloppySound;
+        CrtEffectCheckBox.Content = Strings.Settings_CrtEffect;
+        LanguageLabelText.Text = Strings.Settings_LanguageLabel;
+        LanguageRestartNoteText.Text = Strings.Settings_LanguageRestartNote;
+        LogsFolderLabelText.Text = Strings.Settings_LogsFolder;
+        OpenLogsButton.Content = Strings.Settings_OpenButton;
+        SteamApiKeyLabelText.Text = Strings.Settings_SteamApiKeyLabel;
+        SteamApiKeyDescriptionText.Text = Strings.Settings_SteamApiKeyDescription;
+        SaveApiKeyButton.Content = Strings.Settings_SaveButton;
+        ApiKeyLink.Inlines.Add(Strings.Settings_GetApiKeyLink);
+
         _autostartManager = new AutostartManager(
             new WindowsAutostartRegistry(), Environment.ProcessPath ?? "FloppyGames.Agent.exe");
         _settingsStore = new AgentSettingsStore();
@@ -26,10 +39,15 @@ public partial class SettingsWindow : Window
         var settings = _settingsStore.Load();
         SteamWebApiKeyBox.Text = settings.SteamWebApiKey ?? string.Empty;
 
+        LanguageCombo.ItemsSource = SupportedLanguages.All;
+        LanguageCombo.DisplayMemberPath = "NativeName";
+
         _initializing = true;
         AutostartCheckBox.IsChecked = _autostartManager.IsEnabled;
         FloppySoundCheckBox.IsChecked = settings.PlayFloppySound;
         CrtEffectCheckBox.IsChecked = settings.CrtEffectEnabled;
+        var matchedLanguage = SupportedLanguages.All.FirstOrDefault(l => l.Code == settings.Language);
+        LanguageCombo.SelectedItem = matchedLanguage.Code is not null ? matchedLanguage : SupportedLanguages.All[0];
         _initializing = false;
     }
 
@@ -43,12 +61,12 @@ public partial class SettingsWindow : Window
         if (AutostartCheckBox.IsChecked == true)
         {
             _autostartManager.Enable();
-            StatusText.Text = "Arranque automático ativado.";
+            StatusText.Text = Strings.Settings_AutostartEnabled;
         }
         else
         {
             _autostartManager.Disable();
-            StatusText.Text = "Arranque automático desativado.";
+            StatusText.Text = Strings.Settings_AutostartDisabled;
         }
     }
 
@@ -64,8 +82,8 @@ public partial class SettingsWindow : Window
         var current = _settingsStore.Load();
         _settingsStore.Save(current with { SteamWebApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey });
         StatusText.Text = string.IsNullOrWhiteSpace(apiKey)
-            ? "Chave removida — conquistas deixam de aparecer no ecrã de arranque."
-            : "Chave guardada.";
+            ? Strings.Settings_ApiKeyRemoved
+            : Strings.Settings_ApiKeySaved;
     }
 
     private void OnFloppySoundToggled(object sender, RoutedEventArgs e)
@@ -78,8 +96,8 @@ public partial class SettingsWindow : Window
         var current = _settingsStore.Load();
         _settingsStore.Save(current with { PlayFloppySound = FloppySoundCheckBox.IsChecked == true });
         StatusText.Text = FloppySoundCheckBox.IsChecked == true
-            ? "Som do motor ativado."
-            : "Som do motor desativado.";
+            ? Strings.Settings_FloppySoundEnabled
+            : Strings.Settings_FloppySoundDisabled;
     }
 
     private void OnCrtEffectToggled(object sender, RoutedEventArgs e)
@@ -92,8 +110,20 @@ public partial class SettingsWindow : Window
         var current = _settingsStore.Load();
         _settingsStore.Save(current with { CrtEffectEnabled = CrtEffectCheckBox.IsChecked == true });
         StatusText.Text = CrtEffectCheckBox.IsChecked == true
-            ? "Efeito CRT ativado."
-            : "Efeito CRT desativado.";
+            ? Strings.Settings_CrtEffectEnabled
+            : Strings.Settings_CrtEffectDisabled;
+    }
+
+    private void OnLanguageChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_initializing || LanguageCombo.SelectedItem is not ValueTuple<string, string> selected)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { Language = selected.Item1 });
+        StatusText.Text = Strings.Settings_LanguageRestartNote;
     }
 
     private void OnApiKeyLinkClicked(object sender, RequestNavigateEventArgs e)

@@ -76,7 +76,7 @@ public class GameSessionManagerTests
         using var _ = manager;
         gateway.ProcessToReturn = null;
 
-        var tcs = new TaskCompletionSource<string>();
+        var tcs = new TaskCompletionSource<GameLaunchFailureReason>();
         manager.GameLaunchFailed += (_, e) => tcs.TrySetResult(e.Reason);
         manager.GameLaunched += (_, _) => tcs.TrySetException(new Exception("Não devia ter lançado com sucesso."));
 
@@ -84,7 +84,7 @@ public class GameSessionManagerTests
 
         var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.Contains("Tempo esgotado", reason);
+        Assert.Equal(GameLaunchFailureReason.Timeout, reason);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class GameSessionManagerTests
         var (mediaWatcher, launcher, _, manager) = CreateManager(BuildIni(launchDelaySeconds: 5));
         using var _ = manager;
 
-        var tcs = new TaskCompletionSource<string>();
+        var tcs = new TaskCompletionSource<GameLaunchFailureReason>();
         manager.GameLaunchFailed += (_, e) => tcs.TrySetResult(e.Reason);
 
         mediaWatcher.RaiseArrived(DriveRoot);
@@ -101,7 +101,7 @@ public class GameSessionManagerTests
 
         var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.Contains("removida", reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(GameLaunchFailureReason.MediaRemovedDuringLaunch, reason);
         Assert.Empty(launcher.LaunchedConfigs);
     }
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
+using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
 using FloppyGames.Core.Platforms;
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = this;
+        SubtitleText.Text = Strings.MainWindow_Subtitle;
 
         _logger = LoggingBootstrapper.CreateLogger("Agent");
         _logger.Information("FloppyGames Agent iniciado.");
@@ -77,7 +79,7 @@ public partial class MainWindow : Window
         _sessionManager.GameStopped += OnGameStopped;
 
         _mediaService.Start();
-        AppendStatus("A vigiar unidades amovíveis...");
+        AppendStatus(Strings.MainWindow_Watching);
 
         Closed += OnWindowClosed;
     }
@@ -106,13 +108,13 @@ public partial class MainWindow : Window
     }
 
     private void OnMediaInserted(object? sender, MediaInsertedEventArgs e) =>
-        AppendStatus($"Disquete inserida em {e.DriveRoot}: {e.Config.Title} ({e.Config.Platform}, processo {e.Config.Process}).");
+        AppendStatus(Strings.MainWindow_MediaInserted(e.DriveRoot, e.Config.Title, e.Config.Platform.ToString(), e.Config.Process));
 
     private void OnMediaRemoved(object? sender, MediaRemovedEventArgs e) =>
-        AppendStatus($"Disquete removida de {e.DriveRoot}: {e.Config.Title}.");
+        AppendStatus(Strings.MainWindow_MediaRemoved(e.DriveRoot, e.Config.Title));
 
     private void OnInvalidMediaDetected(object? sender, InvalidMediaEventArgs e) =>
-        AppendStatus($"GAME.INI inválido em {e.DriveRoot}: {string.Join(" | ", e.Errors)}");
+        AppendStatus(Strings.MainWindow_InvalidGameIni(e.DriveRoot, string.Join(" | ", e.Errors)));
 
     private void OnLaunchStarting(object? sender, GameLaunchStartingEventArgs e) =>
         Dispatcher.Invoke(() =>
@@ -139,7 +141,7 @@ public partial class MainWindow : Window
             }
 
             _splashWindows[e.DriveRoot] = splash;
-            AppendStatus($"A lançar {e.Config.Title}...");
+            AppendStatus(Strings.MainWindow_Launching(e.Config.Title));
 
             _ = UpdateSplashSummaryAsync(e.DriveRoot, e.Config, splash);
         });
@@ -166,32 +168,41 @@ public partial class MainWindow : Window
         {
             if (_splashWindows.Remove(e.DriveRoot, out var splash))
             {
-                splash.ShowSuccessAndAutoClose($"{e.Config.Title} em execução.");
+                splash.ShowSuccessAndAutoClose(Strings.Splash_GameRunning(e.Config.Title));
             }
 
-            AppendStatus($"{e.Config.Title} confirmado em execução.");
+            AppendStatus(Strings.MainWindow_LaunchConfirmed(e.Config.Title));
         });
 
     private void OnGameLaunchFailed(object? sender, GameLaunchFailedEventArgs e) =>
         Dispatcher.Invoke(() =>
         {
+            var reason = LocalizeFailureReason(e.Reason);
+
             if (_splashWindows.Remove(e.DriveRoot, out var splash))
             {
-                splash.ShowErrorAndAutoClose(e.Reason);
+                splash.ShowErrorAndAutoClose(reason);
             }
 
-            AppendStatus($"Falha ao lançar {e.Config.Title}: {e.Reason}");
+            AppendStatus(Strings.MainWindow_LaunchFailed(e.Config.Title, reason));
         });
 
     private void OnGameStopped(object? sender, GameStoppedEventArgs e) =>
-        AppendStatus($"{e.Config.Title} terminado.");
+        AppendStatus(Strings.MainWindow_GameStopped(e.Config.Title));
 
     private static string LaunchingStatusText(GamePlatform platform) => platform switch
     {
-        GamePlatform.Steam => "A abrir a Steam...",
-        GamePlatform.Epic => "A abrir a Epic Games Launcher...",
-        GamePlatform.Gog => "A abrir o jogo...",
-        _ => "A abrir...",
+        GamePlatform.Steam => Strings.Splash_LaunchingSteam,
+        GamePlatform.Epic => Strings.Splash_LaunchingEpic,
+        GamePlatform.Gog => Strings.Splash_LaunchingGog,
+        _ => Strings.Splash_LaunchingGeneric,
+    };
+
+    private static string LocalizeFailureReason(GameLaunchFailureReason reason) => reason switch
+    {
+        GameLaunchFailureReason.Timeout => Strings.LaunchFailed_Timeout,
+        GameLaunchFailureReason.MediaRemovedDuringLaunch => Strings.LaunchFailed_MediaRemoved,
+        _ => Strings.LaunchFailed_UnexpectedError,
     };
 
     private void AppendStatus(string message) =>

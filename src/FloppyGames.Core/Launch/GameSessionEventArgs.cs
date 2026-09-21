@@ -30,7 +30,7 @@ public sealed class GameLaunchedEventArgs : EventArgs
 
 public sealed class GameLaunchFailedEventArgs : EventArgs
 {
-    public GameLaunchFailedEventArgs(string driveRoot, GameConfig config, string reason)
+    public GameLaunchFailedEventArgs(string driveRoot, GameConfig config, GameLaunchFailureReason reason)
     {
         DriveRoot = driveRoot;
         Config = config;
@@ -41,7 +41,7 @@ public sealed class GameLaunchFailedEventArgs : EventArgs
 
     public GameConfig Config { get; }
 
-    public string Reason { get; }
+    public GameLaunchFailureReason Reason { get; }
 }
 
 public sealed class GameStoppedEventArgs : EventArgs

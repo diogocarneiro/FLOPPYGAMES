@@ -26,9 +26,9 @@
 
         <!-- Passo 1: escolher a plataforma e o jogo -->
         <DockPanel Grid.Column="0">
-            <TextBlock DockPanel.Dock="Top" Text="1 · ESCOLHER JOGO" Style="{StaticResource StepHeader}" />
+            <TextBlock x:Name="Step1Header" DockPanel.Dock="Top" Style="{StaticResource StepHeader}" />
 
-            <TextBlock DockPanel.Dock="Top" Text="Plataforma" Style="{StaticResource FieldLabel}" />
+            <TextBlock x:Name="PlatformLabel" DockPanel.Dock="Top" Style="{StaticResource FieldLabel}" />
             <ComboBox x:Name="PlatformCombo" DockPanel.Dock="Top" Margin="0,0,0,12"
                       SelectionChanged="OnPlatformChanged">
                 <ComboBoxItem Content="Steam" />
@@ -36,7 +36,7 @@
                 <ComboBoxItem Content="GOG" />
             </ComboBox>
 
-            <TextBlock DockPanel.Dock="Top" Text="Jogos instalados" Style="{StaticResource FieldLabel}" />
+            <TextBlock x:Name="InstalledGamesLabel" DockPanel.Dock="Top" Style="{StaticResource FieldLabel}" />
             <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,0,0,8"
                      TextChanged="OnSearchTextChanged" />
             <TextBlock x:Name="GamesStatusText" DockPanel.Dock="Bottom" Foreground="Gray"
@@ -56,22 +56,22 @@
         <!-- Coluna direita: passos 2 (detalhes), 3 (capa) e 4 (gravar) -->
         <DockPanel Grid.Column="2" x:Name="DetailsPanel" IsEnabled="False">
             <StackPanel DockPanel.Dock="Top">
-                <TextBlock Text="2 · DETALHES" Style="{StaticResource StepHeader}" />
+                <TextBlock x:Name="Step2Header" Style="{StaticResource StepHeader}" />
 
-                <TextBlock Text="Título" Style="{StaticResource FieldLabel}" />
+                <TextBlock x:Name="TitleFieldLabel" Style="{StaticResource FieldLabel}" />
                 <TextBox x:Name="TitleBox" Margin="0,0,0,12" />
 
-                <TextBlock x:Name="IdentifierLabel" Text="Identificador" Style="{StaticResource FieldLabel}" />
+                <TextBlock x:Name="IdentifierLabel" Style="{StaticResource FieldLabel}" />
                 <TextBlock x:Name="IdentifierText" Margin="0,0,0,12" FontFamily="Consolas" Foreground="#FF555555" />
 
-                <TextBlock Text="Processo (executável a vigiar)" Style="{StaticResource FieldLabel}" />
+                <TextBlock x:Name="ProcessFieldLabel" Style="{StaticResource FieldLabel}" />
                 <TextBox x:Name="ProcessBox" Margin="0,0,0,12" />
 
-                <TextBlock Text="Descrição (opcional, mostrada no ecrã de arranque)" Style="{StaticResource FieldLabel}" />
+                <TextBlock x:Name="DescriptionFieldLabel" Style="{StaticResource FieldLabel}" />
                 <TextBox x:Name="DescriptionBox" Margin="0,0,0,12" Height="54"
                          TextWrapping="Wrap" AcceptsReturn="False" VerticalScrollBarVisibility="Auto" />
 
-                <Expander Header="Opções avançadas" Margin="0,0,0,16">
+                <Expander x:Name="AdvancedOptionsExpander" Margin="0,0,0,16">
                     <StackPanel Margin="0,8,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -80,32 +80,32 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Timeout de arranque (s)" Margin="0,0,0,4" />
+                                <TextBlock x:Name="WatchTimeoutFieldLabel" Margin="0,0,0,4" />
                                 <TextBox x:Name="WatchTimeoutBox" Text="30" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Atraso de lançamento (s)" Margin="0,0,0,4" />
+                                <TextBlock x:Name="LaunchDelayFieldLabel" Margin="0,0,0,4" />
                                 <TextBox x:Name="LaunchDelayBox" Text="2" />
                             </StackPanel>
                         </Grid>
-                        <CheckBox x:Name="GracefulShutdownBox" Content="Encerramento suave antes de forçar" IsChecked="True" Margin="0,12,0,0" />
+                        <CheckBox x:Name="GracefulShutdownBox" IsChecked="True" Margin="0,12,0,0" />
                     </StackPanel>
                 </Expander>
 
-                <TextBlock Text="3 · CAPA" Style="{StaticResource StepHeader}" />
+                <TextBlock x:Name="Step3Header" Style="{StaticResource StepHeader}" />
             </StackPanel>
 
             <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
-                <TextBlock Text="4 · GRAVAR NO SUPORTE" Style="{StaticResource StepHeader}" />
+                <TextBlock x:Name="Step4Header" Style="{StaticResource StepHeader}" />
 
-                <TextBlock Text="Unidade destino" Style="{StaticResource FieldLabel}" />
+                <TextBlock x:Name="TargetDriveLabel" Style="{StaticResource FieldLabel}" />
                 <DockPanel Margin="0,0,0,12">
-                    <Button Content="Atualizar" DockPanel.Dock="Right" Width="80" Click="OnRefreshDrivesClicked" />
+                    <Button x:Name="RefreshDrivesButton" DockPanel.Dock="Right" Width="80" Click="OnRefreshDrivesClicked" />
                     <ComboBox x:Name="DriveCombo" Margin="0,0,8,0" />
                 </DockPanel>
 
-                <Button x:Name="WriteButton" Content="Escrever para o suporte" Height="32" Click="OnWriteClicked" />
-                <Button x:Name="PrintLabelButton" Content="Desenhar / imprimir label..." Height="32" Margin="0,8,0,0"
+                <Button x:Name="WriteButton" Height="32" Click="OnWriteClicked" />
+                <Button x:Name="PrintLabelButton" Height="32" Margin="0,8,0,0"
                         Click="OnPrintLabelClicked" />
                 <TextBlock x:Name="WriteStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,8,0,0" />
             </StackPanel>
@@ -122,7 +122,7 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20" />
                     </Grid>
                 </Border>
-                <Button Grid.Row="1" Content="Escolher imagem local..." Margin="0,8,0,0" Click="OnChooseLocalCoverClicked" />
+                <Button x:Name="ChooseLocalCoverButton" Grid.Row="1" Margin="0,8,0,0" Click="OnChooseLocalCoverClicked" />
             </Grid>
         </DockPanel>
     </Grid>
