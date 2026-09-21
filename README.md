@@ -150,7 +150,7 @@ GracefulShutdown=true
 | `PLATFORM` | Não | `STEAM` (default), `EPIC` ou `GOG` — decide que campo de identidade abaixo é exigido. |
 | `APPID` | Só se `PLATFORM=STEAM` | AppID da Steam, usado em `steam://run/APPID`. |
 | `EPIC_NAMESPACE` / `EPIC_ITEM` / `EPIC_APP` | Só se `PLATFORM=EPIC` | Identidade do jogo no catálogo da Epic (ver [nota técnica](#nota-técnica-suporte-multi-plataforma) abaixo). |
-| `GOG_ID` | Só se `PLATFORM=GOG` | ID interno do jogo na GOG (nome da subchave em `HKLM\...\GOG.com\Games`). |
+| `GOG_ID` | Só se `PLATFORM=GOG` | ID do jogo (`Products.id`) na base de dados local do GOG Galaxy. |
 | `PROCESS` | Sim | Nome do executável a vigiar e a terminar na remoção do disquete. |
 | `COVER` | Não | Caminho relativo à capa (na raiz do suporte). |
 | `DESCRIPTION` | Não | Frase curta (uma linha) mostrada no ecrã de arranque, por baixo do título. |
@@ -162,23 +162,29 @@ GracefulShutdown=true
 
 ### Nota técnica: suporte multi-plataforma
 
-O Label Studio e o Agent suportam três lojas — cada uma com um grau de confiança diferente:
+O Label Studio e o Agent suportam três lojas, todas com o mecanismo confirmado contra dados reais:
 
 - **Steam** — protocolo `steam://run/<appid>`. Biblioteca lida de `appmanifest_*.acf`.
 - **Epic Games Launcher** — protocolo documentado
   `com.epicgames.launcher://apps/{namespace}%3A{item}%3A{appname}?action=launch&silent=true`.
   Biblioteca lida de `%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item` (JSON simples).
-  **Verificado** contra um manifesto real durante o desenvolvimento — os nomes de campo
-  (`DisplayName`, `InstallLocation`, `InstallSize`, `CatalogNamespace`, `CatalogItemId`, `AppName`)
-  vêm de lá, não de suposição.
+  **Verificado** contra um manifesto real — os nomes de campo (`DisplayName`, `InstallLocation`,
+  `InstallSize`, `CatalogNamespace`, `CatalogItemId`, `AppName`) vêm de lá, não de suposição.
 - **GOG Galaxy** — sem protocolo oficial fiável para lançar um jogo por URI, por isso o Agent
-  lança o `.exe` instalado diretamente. O caminho é resolvido no momento do lançamento a partir de
-  `HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<gameID>` (valores `name`, `path`, `exe`) — não gravado
-  no `GAME.INI`, para o floppy continuar portátil entre reinstalações.
-  **Não verificado**: o GOG Galaxy não estava instalado em nenhuma máquina disponível ao escrever
-  isto. A estrutura segue apenas o que é documentado pela comunidade (usada por ferramentas como o
-  Playnite) — falha graciosamente (sem listar/lançar nada) se os nomes de chave não baterem certo,
-  mas só fica confirmada com um teste em hardware real com GOG instalado.
+  lança o `.exe` instalado diretamente. Tanto a biblioteca como o executável a lançar são lidos da
+  própria base de dados do GOG Galaxy 2.0 (`%ProgramData%\GOG.com\Galaxy\storage\galaxy-2.0.db`,
+  SQLite, via `Microsoft.Data.Sqlite`, aberta só-leitura) — tabelas `Products`,
+  `InstalledBaseProducts`, `DiskSizes` e `PlayTasks`/`PlayTaskLaunchParameters` (a tarefa de
+  arranque principal, `isPrimary = 1`, dá o executável correto). O caminho do jogo não é gravado no
+  `GAME.INI` (só o `GOG_ID`), para o floppy continuar portátil entre reinstalações.
+  **Esquema verificado** com `sqlite3` contra a base de dados de uma instalação real e em execução
+  do GOG Galaxy 2.0 — a primeira tentativa desta implementação assumia entradas no Registo (como as
+  instalações standalone antigas da GOG faziam, e como ferramentas como o Playnite ainda descrevem
+  nalguma documentação), mas o Galaxy 2.0 não usa o Registo para isto de todo; essa base ficou como
+  lição de que "documentado pela comunidade" não substitui inspecionar os dados reais. A biblioteca
+  de teste estava vazia (sem jogos instalados), por isso as consultas foram validadas contra o
+  esquema real e cobertas por testes automatizados com dados sintéticos — mas o percurso completo
+  só fica 100% confirmado com um jogo GOG realmente instalado.
 
 ## Requisitos
 
@@ -232,9 +238,10 @@ FLOPPYGAMES/
 |---|---|---|
 | Agent + Label Studio | C# / .NET 10 (WPF) | Interop Win32 maduro (`RegisterDeviceNotification`, `Process`), UI nativa rápida a desenvolver, *single-file publish*, versão LTS mais recente disponível. |
 | Deteção de mídia | `WMI (Win32_VolumeChangeEvent)` + sondagem dedicada para disquetes | Eventos para pens USB (sem *polling*); sondagem leve e confinada a `A:\`/`B:\` para troca de disco em drives de disquete, onde o Windows não notifica por evento. |
-| Lançamento Steam | `Process.Start("steam://run/<APPID>")` | Delega em Steam a validação/atualização do jogo. |
+| Lançamento por plataforma | `steam://run/`, URI da Epic, `.exe` direto na GOG | Cada loja delega a validação/atualização do jogo em si mesma, quando tem protocolo para isso; a GOG não tem, por isso é a exceção. |
+| Biblioteca GOG | `Microsoft.Data.Sqlite` sobre `galaxy-2.0.db` (só-leitura) | O GOG Galaxy 2.0 guarda tudo numa base de dados SQLite própria, não no Registo — única dependência externa nova, justificada por não haver alternativa razoável a implementar à mão (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)). |
 | Instalador | Inno Setup | Leve, scriptável, suporta tarefas opcionais (arranque automático). |
-| Persistência de config | `appsettings.json` + Registo do Windows (para o toggle de arranque) | Simples, sem dependência de base de dados. |
+| Persistência de config | `settings.json` (Agent) + Registo do Windows (para o toggle de arranque) | Simples, sem dependência de base de dados própria do FloppyGames. |
 
 ## Roadmap
 

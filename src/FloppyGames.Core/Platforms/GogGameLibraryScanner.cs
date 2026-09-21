@@ -1,96 +1,139 @@
 using FloppyGames.Core.Configuration;
-using Microsoft.Win32;
+using Microsoft.Data.Sqlite;
 
 namespace FloppyGames.Core.Platforms;
 
 /// <summary>
-/// Lê os jogos GOG instalados a partir do Registo
-/// (<c>HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\&lt;gameID&gt;</c>, com valores <c>name</c>,
-/// <c>path</c> e <c>exe</c>).
+/// Lê os jogos GOG instalados a partir da própria base de dados do GOG Galaxy 2.0
+/// (<c>%ProgramData%\GOG.com\Galaxy\storage\galaxy-2.0.db</c>, SQLite).
 /// <para>
-/// <b>Não verificado em hardware real</b> — o GOG Galaxy não estava instalado em nenhuma máquina
-/// disponível ao escrever isto, por isso esta estrutura segue apenas o que é documentado pela
-/// comunidade (usada por ferramentas como o Playnite), ao contrário da Steam e da Epic, cujo
-/// formato foi confirmado diretamente contra ficheiros/registo reais. Falha graciosamente (lista
-/// vazia / <c>null</c>) se a chave não existir ou os valores não baterem certo — nunca lança.
+/// Este esquema foi <b>confirmado diretamente</b> contra a base de dados de uma instalação real e
+/// em execução do GOG Galaxy — <c>Products</c> (id, name), <c>InstalledBaseProducts</c>
+/// (productId → installationPath), <c>DiskSizes</c> e <c>PlayTasks</c>/<c>PlayTaskLaunchParameters</c>
+/// (a tarefa de arranque principal, <c>isPrimary = 1</c>, dá o executável correto a lançar) são
+/// tabelas reais desse ficheiro, não suposição. Uma tentativa anterior desta classe assumia que a
+/// GOG escrevia entradas por jogo no Registo (como as instalações standalone antigas faziam) — o
+/// GOG Galaxy 2.0 não o faz de todo; essa base foi a lição de que "documentado pela comunidade"
+/// não substitui inspecionar os dados reais.
+/// </para>
+/// <para>
+/// A base de dados está aberta em modo só-leitura (o próprio cliente Galaxy pode tê-la aberta em
+/// simultâneo) e qualquer falha — ficheiro em falta, bloqueado, ou colunas inesperadas — resulta
+/// em lista vazia / <c>null</c>, nunca numa exceção não tratada.
 /// </para>
 /// </summary>
 public sealed class GogGameLibraryScanner
 {
-    private const string GamesRegistryPath = @"SOFTWARE\WOW6432Node\GOG.com\Games";
+    private static readonly string DefaultDatabasePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+        "GOG.com", "Galaxy", "storage", "galaxy-2.0.db");
+
+    private readonly string _databasePath;
+
+    public GogGameLibraryScanner(string? databasePath = null)
+    {
+        _databasePath = databasePath ?? DefaultDatabasePath;
+    }
 
     public IReadOnlyList<DiscoveredGame> ScanInstalledGames()
     {
+        if (!File.Exists(_databasePath))
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT p.id, p.name, ibp.installationPath, ds.diskSize
+            FROM InstalledBaseProducts ibp
+            JOIN Products p ON p.id = ibp.productId
+            LEFT JOIN DiskSizes ds ON ds.gameReleaseKey = 'gog_' || p.id
+            ORDER BY p.name COLLATE NOCASE
+            """;
+
         try
         {
-            using var gamesKey = Registry.LocalMachine.OpenSubKey(GamesRegistryPath);
-            if (gamesKey is null)
-            {
-                return [];
-            }
+            using var connection = OpenReadOnly();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            using var reader = command.ExecuteReader();
 
             var games = new List<DiscoveredGame>();
-
-            foreach (var gameId in gamesKey.GetSubKeyNames())
+            while (reader.Read())
             {
-                using var gameKey = gamesKey.OpenSubKey(gameId);
-                var game = TryReadGameKey(gameId, gameKey);
-                if (game is not null)
+                var productId = reader.GetInt64(0);
+                var name = reader.IsDBNull(1) ? null : reader.GetString(1);
+                var installPath = reader.IsDBNull(2) ? null : reader.GetString(2);
+
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(installPath))
                 {
-                    games.Add(game);
+                    continue;
                 }
+
+                var diskSize = reader.IsDBNull(3) ? (long?)null : reader.GetInt64(3);
+                games.Add(new DiscoveredGame(
+                    name, GamePlatform.Gog, installPath, diskSize, GogGameId: productId.ToString()));
             }
 
-            return games.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            return games;
         }
-        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
         {
             return [];
         }
     }
 
-    /// <summary>Resolve o executável instalado de um jogo pelo seu GOG_ID — usado no momento do lançamento.</summary>
+    /// <summary>
+    /// Resolve o executável instalado de um jogo pelo seu GOG_ID, a partir da tarefa de arranque
+    /// principal (<c>PlayTasks.isPrimary = 1</c>) — usado no momento do lançamento.
+    /// </summary>
     public string? TryResolveExePath(string gogGameId)
     {
+        if (!long.TryParse(gogGameId, out var productId) || !File.Exists(_databasePath))
+        {
+            return null;
+        }
+
+        const string sql = """
+            SELECT ibp.installationPath, ptlp.executablePath
+            FROM InstalledBaseProducts ibp
+            JOIN PlayTasks pt ON pt.gameReleaseKey = 'gog_' || ibp.productId
+            JOIN PlayTaskLaunchParameters ptlp ON ptlp.playTaskId = pt.id
+            WHERE ibp.productId = $productId AND pt.isPrimary = 1
+            """;
+
         try
         {
-            using var gameKey = Registry.LocalMachine.OpenSubKey($@"{GamesRegistryPath}\{gogGameId}");
-            if (gameKey is null)
+            using var connection = OpenReadOnly();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("$productId", productId);
+            using var reader = command.ExecuteReader();
+
+            if (!reader.Read())
             {
                 return null;
             }
 
-            var path = gameKey.GetValue("path") as string;
-            var exe = gameKey.GetValue("exe") as string;
+            var installPath = reader.IsDBNull(0) ? null : reader.GetString(0);
+            var executablePath = reader.IsDBNull(1) ? null : reader.GetString(1);
 
-            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(exe))
+            if (string.IsNullOrWhiteSpace(installPath) || string.IsNullOrWhiteSpace(executablePath))
             {
                 return null;
             }
 
-            return Path.IsPathRooted(exe) ? exe : Path.Combine(path, exe);
+            return Path.IsPathRooted(executablePath) ? executablePath : Path.Combine(installPath, executablePath);
         }
-        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
         {
             return null;
         }
     }
 
-    private static DiscoveredGame? TryReadGameKey(string gameId, RegistryKey? gameKey)
+    private SqliteConnection OpenReadOnly()
     {
-        if (gameKey is null)
-        {
-            return null;
-        }
-
-        var name = gameKey.GetValue("name") as string;
-        var path = gameKey.GetValue("path") as string;
-
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path))
-        {
-            return null;
-        }
-
-        return new DiscoveredGame(name, GamePlatform.Gog, path, GogGameId: gameId);
+        var connection = new SqliteConnection($"Data Source={_databasePath};Mode=ReadOnly");
+        connection.Open();
+        return connection;
     }
 }

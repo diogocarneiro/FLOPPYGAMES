@@ -105,9 +105,13 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 - [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic
   (biblioteca + lançamento) **verificado** contra dados reais de uma instalação existente
   (`%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item`, URI de lançamento documentado
-  pela Epic). GOG (lançamento direto do `.exe`, biblioteca via Registo
-  `HKLM\...\GOG.com\Games`) implementado a partir do que é documentado pela comunidade, mas
-  **não verificado em hardware real** — nenhuma máquina disponível tinha GOG Galaxy instalado.
+  pela Epic). GOG **reescrito e verificado**: a primeira versão assumia entradas no Registo
+  (`HKLM\...\GOG.com\Games`, documentado pela comunidade) — mas ao tentar validar em hardware real
+  descobriu-se que o GOG Galaxy 2.0 não usa o Registo de todo, guardando tudo numa base de dados
+  SQLite própria (`galaxy-2.0.db`). Reescrito para ler dessa base de dados (`Microsoft.Data.Sqlite`,
+  só-leitura), com o esquema confirmado via `sqlite3` contra uma instalação real e em execução do
+  GOG Galaxy, e testes automatizados cobrindo as consultas contra esse esquema real. A biblioteca de
+  teste estava vazia, por isso falta a confirmação final com um jogo GOG realmente instalado.
   Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
 - [ ] Suporte a etiquetas NFC/RFID coladas na disquete como gatilho alternativo à deteção de volume (mais fiável em pens genéricas).

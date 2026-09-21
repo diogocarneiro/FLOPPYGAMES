@@ -30,14 +30,14 @@
 
         <!-- Varrimento CRT, no estilo dos ecrãs de arranque retro — desliza lentamente (nunca
              pisca/estroboscópico, por acessibilidade), e é desligável em Definições. -->
-        <Rectangle x:Name="ScanlineOverlay" IsHitTestVisible="False" Opacity="0.05">
+        <Rectangle x:Name="ScanlineOverlay" IsHitTestVisible="False" Opacity="0.09">
             <Rectangle.Fill>
                 <DrawingBrush TileMode="Tile" Viewport="0,0,4,4" ViewportUnits="Absolute" Stretch="None">
                     <DrawingBrush.Transform>
                         <TranslateTransform x:Name="ScanlineTransform" Y="0" />
                     </DrawingBrush.Transform>
                     <DrawingBrush.Drawing>
-                        <GeometryDrawing Brush="Black">
+                        <GeometryDrawing Brush="White">
                             <GeometryDrawing.Geometry>
                                 <RectangleGeometry Rect="0,0,4,2" />
                             </GeometryDrawing.Geometry>
