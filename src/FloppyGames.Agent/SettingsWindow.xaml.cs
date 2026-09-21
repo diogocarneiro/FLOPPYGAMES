@@ -46,8 +46,8 @@ public partial class SettingsWindow : Window
         AutostartCheckBox.IsChecked = _autostartManager.IsEnabled;
         FloppySoundCheckBox.IsChecked = settings.PlayFloppySound;
         CrtEffectCheckBox.IsChecked = settings.CrtEffectEnabled;
-        var matchedLanguage = SupportedLanguages.All.FirstOrDefault(l => l.Code == settings.Language);
-        LanguageCombo.SelectedItem = matchedLanguage.Code is not null ? matchedLanguage : SupportedLanguages.All[0];
+        LanguageCombo.SelectedItem = SupportedLanguages.All.FirstOrDefault(l => l.Code == settings.Language)
+            ?? SupportedLanguages.All[0];
         _initializing = false;
     }
 
@@ -116,13 +116,13 @@ public partial class SettingsWindow : Window
 
     private void OnLanguageChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (_initializing || LanguageCombo.SelectedItem is not ValueTuple<string, string> selected)
+        if (_initializing || LanguageCombo.SelectedItem is not LanguageOption selected)
         {
             return;
         }
 
         var current = _settingsStore.Load();
-        _settingsStore.Save(current with { Language = selected.Item1 });
+        _settingsStore.Save(current with { Language = selected.Code });
         StatusText.Text = Strings.Settings_LanguageRestartNote;
     }
 
