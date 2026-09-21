@@ -33,7 +33,7 @@
                       SelectionChanged="OnPlatformChanged">
                 <ComboBoxItem Content="Steam" />
                 <ComboBoxItem Content="Epic Games" />
-                <ComboBoxItem Content="GOG (não verificado)" />
+                <ComboBoxItem Content="GOG" />
             </ComboBox>
 
             <TextBlock DockPanel.Dock="Top" Text="Jogos instalados" Style="{StaticResource FieldLabel}" />
