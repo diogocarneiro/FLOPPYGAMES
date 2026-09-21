@@ -30,6 +30,22 @@ public class AgentSettingsStoreTests : IDisposable
         Assert.Null(settings.SteamWebApiKey);
         Assert.True(settings.PlayFloppySound);
         Assert.True(settings.CrtEffectEnabled);
+        Assert.True(settings.SteamEnabled);
+        Assert.False(settings.EpicEnabled);
+        Assert.False(settings.GogEnabled);
+    }
+
+    [Fact]
+    public void Save_ThenLoad_RoundTripsPlatformToggles()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { SteamEnabled = false, EpicEnabled = true, GogEnabled = true });
+        var settings = store.Load();
+
+        Assert.False(settings.SteamEnabled);
+        Assert.True(settings.EpicEnabled);
+        Assert.True(settings.GogEnabled);
     }
 
     [Fact]

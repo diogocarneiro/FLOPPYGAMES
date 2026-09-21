@@ -65,6 +65,10 @@
   <data name="Settings_FloppySoundDisabled" xml:space="preserve"><value>Som do motor desativado.</value></data>
   <data name="Settings_CrtEffectEnabled" xml:space="preserve"><value>Efeito CRT ativado.</value></data>
   <data name="Settings_CrtEffectDisabled" xml:space="preserve"><value>Efeito CRT desativado.</value></data>
+  <data name="Settings_PlatformsLabel" xml:space="preserve"><value>Plataformas</value></data>
+  <data name="Settings_PlatformsDescription" xml:space="preserve"><value>Escolhe que plataformas aparecem no Label Studio ao criar uma disquete. O Agent continua a lançar qualquer GAME.INI já criado, independentemente disto.</value></data>
+  <data name="Settings_PlatformEnabled" xml:space="preserve"><value>{0} ativado.</value></data>
+  <data name="Settings_PlatformDisabled" xml:space="preserve"><value>{0} desativado.</value></data>
 
   <!-- Tray icon -->
   <data name="Tray_OpenFloppyGames" xml:space="preserve"><value>Abrir FloppyGames</value></data>

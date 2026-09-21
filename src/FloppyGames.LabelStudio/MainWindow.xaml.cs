@@ -8,6 +8,7 @@ using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
 using FloppyGames.Core.Platforms;
+using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
 using Microsoft.Win32;
 using Serilog;
@@ -53,7 +54,43 @@ public partial class MainWindow : Window
         // Definido em código (não no XAML) para só disparar OnPlatformChanged depois dos scanners
         // acima estarem prontos — se viesse do XAML, o SelectionChanged correria durante o
         // InitializeComponent(), antes destes campos serem atribuídos.
+        PlatformCombo.ItemsSource = EnabledPlatformOptions();
         PlatformCombo.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Só as plataformas ligadas nas Definições do Agent (settings.json partilhado) aparecem aqui
+    /// — Steam ligada por omissão, Epic e GOG desligadas. Nunca fica vazio: se por acaso todas
+    /// ficarem desligadas, mostra as 3 na mesma em vez de um seletor inutilizável.
+    /// </summary>
+    private static List<PlatformOption> EnabledPlatformOptions()
+    {
+        var settings = new AgentSettingsStore().Load();
+        var options = new List<PlatformOption>();
+
+        if (settings.SteamEnabled)
+        {
+            options.Add(new PlatformOption(GamePlatform.Steam, "Steam"));
+        }
+
+        if (settings.EpicEnabled)
+        {
+            options.Add(new PlatformOption(GamePlatform.Epic, "Epic Games"));
+        }
+
+        if (settings.GogEnabled)
+        {
+            options.Add(new PlatformOption(GamePlatform.Gog, "GOG"));
+        }
+
+        if (options.Count == 0)
+        {
+            options.Add(new PlatformOption(GamePlatform.Steam, "Steam"));
+            options.Add(new PlatformOption(GamePlatform.Epic, "Epic Games"));
+            options.Add(new PlatformOption(GamePlatform.Gog, "GOG"));
+        }
+
+        return options;
     }
 
     private void ApplyStaticText()
@@ -78,12 +115,8 @@ public partial class MainWindow : Window
         ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
     }
 
-    private GamePlatform SelectedPlatform() => PlatformCombo.SelectedIndex switch
-    {
-        1 => GamePlatform.Epic,
-        2 => GamePlatform.Gog,
-        _ => GamePlatform.Steam,
-    };
+    private GamePlatform SelectedPlatform() =>
+        (PlatformCombo.SelectedItem as PlatformOption)?.Platform ?? GamePlatform.Steam;
 
     private static string PlatformDisplayName(GamePlatform platform) => platform switch
     {

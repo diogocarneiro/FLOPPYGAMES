@@ -71,6 +71,10 @@ public static class Strings
     public static string Settings_FloppySoundDisabled => Get("Settings_FloppySoundDisabled");
     public static string Settings_CrtEffectEnabled => Get("Settings_CrtEffectEnabled");
     public static string Settings_CrtEffectDisabled => Get("Settings_CrtEffectDisabled");
+    public static string Settings_PlatformsLabel => Get("Settings_PlatformsLabel");
+    public static string Settings_PlatformsDescription => Get("Settings_PlatformsDescription");
+    public static string Settings_PlatformEnabled(string platform) => Format("Settings_PlatformEnabled", platform);
+    public static string Settings_PlatformDisabled(string platform) => Format("Settings_PlatformDisabled", platform);
 
     // Tray icon
     public static string Tray_OpenFloppyGames => Get("Tray_OpenFloppyGames");

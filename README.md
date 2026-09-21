@@ -109,7 +109,7 @@ Serviço/aplicação de bandeja (*system tray*) que corre em segundo plano. É o
 ### 2. FloppyGames Label Studio
 Aplicação de ambiente de trabalho para **criar** as disquetes/pens, organizada em 4 passos visíveis
 na própria janela (escolher jogo → detalhes → capa → gravar):
-- Seletor de plataforma (Steam / Epic Games / GOG) — pesquisa a biblioteca local de cada uma sem precisar de *API key* nem autenticação (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)).
+- Seletor de plataforma (Steam / Epic Games / GOG) — pesquisa a biblioteca local de cada uma sem precisar de *API key* nem autenticação (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)). Só mostra as plataformas ligadas nas Definições do Agent (Steam ligada por omissão; Epic e GOG desligadas) — não afeta o Agent, que continua a lançar qualquer `GAME.INI` já criado independentemente disto.
 - Sugestão automática do executável a vigiar, a partir da pasta de instalação (o utilizador confirma/corrige).
 - Pré-visualização da capa: descarregada do CDN público da Steam quando a plataforma é Steam; na Epic/GOG (sem CDN público equivalente) a caixa explica isso diretamente em vez de ficar vazia sem explicação, com escolha manual de imagem local sempre disponível.
 - **Catálogo partilhável** (`catalog/catalog.json`, versionado no repositório — sem rede): quando o jogo escolhido já está catalogado, preenche automaticamente o processo (verificado) e a descrição (já traduzida nos 5 idiomas), e usa a capa do catálogo para Epic/GOG quando existir uma. Ver [catalog/README.md](catalog/README.md) para adicionar entradas.

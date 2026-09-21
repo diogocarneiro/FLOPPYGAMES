@@ -65,6 +65,10 @@
   <data name="Settings_FloppySoundDisabled" xml:space="preserve"><value>Motor sound disabled.</value></data>
   <data name="Settings_CrtEffectEnabled" xml:space="preserve"><value>CRT effect enabled.</value></data>
   <data name="Settings_CrtEffectDisabled" xml:space="preserve"><value>CRT effect disabled.</value></data>
+  <data name="Settings_PlatformsLabel" xml:space="preserve"><value>Platforms</value></data>
+  <data name="Settings_PlatformsDescription" xml:space="preserve"><value>Choose which platforms appear in Label Studio when creating a floppy. The Agent still launches any GAME.INI already created, regardless of this.</value></data>
+  <data name="Settings_PlatformEnabled" xml:space="preserve"><value>{0} enabled.</value></data>
+  <data name="Settings_PlatformDisabled" xml:space="preserve"><value>{0} disabled.</value></data>
 
   <!-- Tray icon -->
   <data name="Tray_OpenFloppyGames" xml:space="preserve"><value>Open FloppyGames</value></data>

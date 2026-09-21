@@ -24,6 +24,8 @@ public partial class SettingsWindow : Window
         CrtEffectCheckBox.Content = Strings.Settings_CrtEffect;
         LanguageLabelText.Text = Strings.Settings_LanguageLabel;
         LanguageRestartNoteText.Text = Strings.Settings_LanguageRestartNote;
+        PlatformsLabelText.Text = Strings.Settings_PlatformsLabel;
+        PlatformsDescriptionText.Text = Strings.Settings_PlatformsDescription;
         LogsFolderLabelText.Text = Strings.Settings_LogsFolder;
         OpenLogsButton.Content = Strings.Settings_OpenButton;
         SteamApiKeyLabelText.Text = Strings.Settings_SteamApiKeyLabel;
@@ -48,6 +50,9 @@ public partial class SettingsWindow : Window
         CrtEffectCheckBox.IsChecked = settings.CrtEffectEnabled;
         LanguageCombo.SelectedItem = SupportedLanguages.All.FirstOrDefault(l => l.Code == settings.Language)
             ?? SupportedLanguages.All[0];
+        SteamEnabledCheckBox.IsChecked = settings.SteamEnabled;
+        EpicEnabledCheckBox.IsChecked = settings.EpicEnabled;
+        GogEnabledCheckBox.IsChecked = settings.GogEnabled;
         _initializing = false;
     }
 
@@ -112,6 +117,29 @@ public partial class SettingsWindow : Window
         StatusText.Text = CrtEffectCheckBox.IsChecked == true
             ? Strings.Settings_CrtEffectEnabled
             : Strings.Settings_CrtEffectDisabled;
+    }
+
+    private void OnSteamEnabledToggled(object sender, RoutedEventArgs e) =>
+        OnPlatformToggled("Steam", SteamEnabledCheckBox.IsChecked == true, (settings, enabled) => settings with { SteamEnabled = enabled });
+
+    private void OnEpicEnabledToggled(object sender, RoutedEventArgs e) =>
+        OnPlatformToggled("Epic Games", EpicEnabledCheckBox.IsChecked == true, (settings, enabled) => settings with { EpicEnabled = enabled });
+
+    private void OnGogEnabledToggled(object sender, RoutedEventArgs e) =>
+        OnPlatformToggled("GOG", GogEnabledCheckBox.IsChecked == true, (settings, enabled) => settings with { GogEnabled = enabled });
+
+    private void OnPlatformToggled(string platformName, bool enabled, Func<AgentSettings, bool, AgentSettings> apply)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(apply(current, enabled));
+        StatusText.Text = enabled
+            ? Strings.Settings_PlatformEnabled(platformName)
+            : Strings.Settings_PlatformDisabled(platformName);
     }
 
     private void OnLanguageChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

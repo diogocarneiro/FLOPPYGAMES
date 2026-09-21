@@ -119,6 +119,14 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   agnóstico de idioma, quem traduz é a UI. Instalador: os 5 idiomas nativos do Inno Setup, Francês
   primeiro na lista (continua sem diálogo de escolha, para o `/configure` não mostrar janelas), com
   as mensagens do modo `/configure` movidas para `[CustomMessages]`.
+- [x] Todas as janelas (Agent, splash, Definições, Label Studio, impressão de label) arrancam
+  centradas no ecrã (`WindowStartupLocation="CenterScreen"`), incluindo as duas que antes usavam
+  `CenterOwner` — mais previsível do que depender de onde a janela "dona" estava.
+- [x] Ativar/desativar plataformas no Label Studio: novo `AgentSettings.SteamEnabled` (`true` por
+  omissão) / `EpicEnabled` / `GogEnabled` (`false` por omissão), com 3 checkboxes nas Definições do
+  Agent. O seletor de plataforma do Label Studio só mostra as ligadas (nunca fica vazio — se por
+  acaso todas ficarem desligadas, mostra as 3 na mesma). Não afeta o Agent: continua a lançar
+  qualquer `GAME.INI` já criado, mesmo de uma plataforma entretanto desligada nas Definições.
 - [x] Suporte a outros lançadores além de Steam (Epic, GOG), via `PLATFORM=` no `GAME.INI`. Epic
   (biblioteca + lançamento) **verificado** contra dados reais de uma instalação existente
   (`%ProgramData%\Epic\EpicGamesLauncher\Data\Manifests\*.item`, URI de lançamento documentado
