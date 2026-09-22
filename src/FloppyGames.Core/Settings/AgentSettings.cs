@@ -8,7 +8,9 @@ namespace FloppyGames.Core.Settings;
 /// Agent e pelo Label Studio — este último não tem seletor próprio, só lê este valor), e quais
 /// plataformas aparecem como opção no seletor do Label Studio (Steam ligada por omissão; Epic e
 /// GOG desligadas — não afeta o Agent, que continua a lançar qualquer GAME.INI já criado
-/// independentemente disto).
+/// independentemente disto), e se a deteção de cartões NFC/RFID está ativa (desligada por
+/// omissão — capacidade opcional que depende de um leitor PC/SC físico, nunca verificada com
+/// hardware real; máquinas sem leitor e sem este opt-in nunca tocam no subsistema PC/SC).
 /// </summary>
 public sealed record AgentSettings
 {
@@ -25,4 +27,6 @@ public sealed record AgentSettings
     public bool EpicEnabled { get; init; }
 
     public bool GogEnabled { get; init; }
+
+    public bool NfcEnabled { get; init; }
 }

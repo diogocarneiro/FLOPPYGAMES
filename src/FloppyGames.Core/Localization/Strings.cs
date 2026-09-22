@@ -38,6 +38,8 @@ public static class Strings
     public static string Splash_LaunchingGog => Get("Splash_LaunchingGog");
     public static string Splash_LaunchingGeneric => Get("Splash_LaunchingGeneric");
     public static string Splash_GameRunning(string title) => Format("Splash_GameRunning", title);
+    public static string Splash_NfcDetected => Get("Splash_NfcDetected");
+    public static string Splash_StatCardId => Get("Splash_StatCardId");
 
     // MainWindow (Agent)
     public static string MainWindow_Subtitle => Get("MainWindow_Subtitle");
@@ -50,6 +52,10 @@ public static class Strings
     public static string MainWindow_LaunchConfirmed(string title) => Format("MainWindow_LaunchConfirmed", title);
     public static string MainWindow_LaunchFailed(string title, string reason) => Format("MainWindow_LaunchFailed", title, reason);
     public static string MainWindow_GameStopped(string title) => Format("MainWindow_GameStopped", title);
+    public static string MainWindow_CardInserted(string uid, string title, string platform, string process) =>
+        Format("MainWindow_CardInserted", uid, title, platform, process);
+    public static string MainWindow_CardRemoved(string uid, string title) => Format("MainWindow_CardRemoved", uid, title);
+    public static string MainWindow_InvalidCard(string uid, string errors) => Format("MainWindow_InvalidCard", uid, errors);
 
     // Settings window
     public static string Settings_Autostart => Get("Settings_Autostart");
@@ -75,6 +81,10 @@ public static class Strings
     public static string Settings_PlatformsDescription => Get("Settings_PlatformsDescription");
     public static string Settings_PlatformEnabled(string platform) => Format("Settings_PlatformEnabled", platform);
     public static string Settings_PlatformDisabled(string platform) => Format("Settings_PlatformDisabled", platform);
+    public static string Settings_NfcEnabled => Get("Settings_NfcEnabled");
+    public static string Settings_NfcDescription => Get("Settings_NfcDescription");
+    public static string Settings_NfcEnabledOn => Get("Settings_NfcEnabledOn");
+    public static string Settings_NfcEnabledOff => Get("Settings_NfcEnabledOff");
 
     // Tray icon
     public static string Tray_OpenFloppyGames => Get("Tray_OpenFloppyGames");
@@ -137,6 +147,17 @@ public static class Strings
     public static string LS_WriteCancelled => Get("LS_WriteCancelled");
     public static string LS_WriteSuccess(string title, string drive) => Format("LS_WriteSuccess", title, drive);
     public static string LS_WriteFailed => Get("LS_WriteFailed");
+    public static string LS_TargetTypeDrive => Get("LS_TargetTypeDrive");
+    public static string LS_TargetTypeNfc => Get("LS_TargetTypeNfc");
+    public static string LS_Nfc_NoReaderDetected => Get("LS_Nfc_NoReaderDetected");
+    public static string LS_Nfc_ReaderDetected(string readerName) => Format("LS_Nfc_ReaderDetected", readerName);
+    public static string LS_Nfc_WaitingForCard => Get("LS_Nfc_WaitingForCard");
+    public static string LS_Nfc_CardDetected(string uid) => Format("LS_Nfc_CardDetected", uid);
+    public static string LS_Nfc_RefreshReaderButton => Get("LS_Nfc_RefreshReaderButton");
+    public static string LS_Nfc_WriteSuccess(string title, string uid) => Format("LS_Nfc_WriteSuccess", title, uid);
+    public static string LS_Nfc_WriteFailed => Get("LS_Nfc_WriteFailed");
+    public static string LS_Nfc_NoCardPresent => Get("LS_Nfc_NoCardPresent");
+    public static string LS_Nfc_CoverNotWritten => Get("LS_Nfc_CoverNotWritten");
 
     // LabelPrintWindow
     public static string LPW_PrintButton => Get("LPW_PrintButton");
@@ -161,4 +182,11 @@ public static class Strings
         Format("Core_Parser_OptionsMustBeNonNegativeInt", field, raw);
     public static string Core_Parser_OptionsMustBeBool(string field, string raw) =>
         Format("Core_Parser_OptionsMustBeBool", field, raw);
+
+    // Core: Nfc
+    public static string Core_Nfc_UnsupportedCardType => Get("Core_Nfc_UnsupportedCardType");
+    public static string Core_Nfc_TooLarge(string required, string available) => Format("Core_Nfc_TooLarge", required, available);
+    public static string Core_Nfc_AuthenticationFailed(int sector) => Format("Core_Nfc_AuthenticationFailed", sector);
+    public static string Core_Nfc_ExistingData => Get("Core_Nfc_ExistingData");
+    public static string Core_Nfc_ReaderCommunicationFailure(string error) => Format("Core_Nfc_ReaderCommunicationFailure", error);
 }

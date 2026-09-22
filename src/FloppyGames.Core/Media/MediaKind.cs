@@ -5,6 +5,7 @@ public enum MediaKind
 {
     Floppy,
     Usb,
+    Nfc,
 }
 
 /// <summary>

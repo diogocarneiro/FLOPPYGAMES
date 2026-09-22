@@ -33,6 +33,8 @@
   <data name="Splash_LaunchingGog" xml:space="preserve"><value>Ouverture du jeu...</value></data>
   <data name="Splash_LaunchingGeneric" xml:space="preserve"><value>Ouverture...</value></data>
   <data name="Splash_GameRunning" xml:space="preserve"><value>{0} en cours d'exécution.</value></data>
+  <data name="Splash_NfcDetected" xml:space="preserve"><value>CARTE NFC DÉTECTÉE</value></data>
+  <data name="Splash_StatCardId" xml:space="preserve"><value>CARD ID</value></data>
 
   <!-- MainWindow (Agent) -->
   <data name="MainWindow_Subtitle" xml:space="preserve"><value>Surveille les supports amovibles à la recherche de GAME.INI — insère ou retire un support pour voir l'état ici.</value></data>
@@ -44,6 +46,9 @@
   <data name="MainWindow_LaunchConfirmed" xml:space="preserve"><value>{0} confirmé en cours d'exécution.</value></data>
   <data name="MainWindow_LaunchFailed" xml:space="preserve"><value>Échec du lancement de {0} : {1}</value></data>
   <data name="MainWindow_GameStopped" xml:space="preserve"><value>{0} terminé.</value></data>
+  <data name="MainWindow_CardInserted" xml:space="preserve"><value>Carte NFC insérée (UID {0}) : {1} ({2}, processus {3}).</value></data>
+  <data name="MainWindow_CardRemoved" xml:space="preserve"><value>Carte NFC retirée (UID {0}) : {1}.</value></data>
+  <data name="MainWindow_InvalidCard" xml:space="preserve"><value>Carte NFC invalide (UID {0}) : {1}</value></data>
 
   <!-- Settings window -->
   <data name="Settings_Autostart" xml:space="preserve"><value>Démarrer FloppyGames Agent avec Windows</value></data>
@@ -69,6 +74,10 @@
   <data name="Settings_PlatformsDescription" xml:space="preserve"><value>Choisis les plateformes qui apparaissent dans Label Studio lors de la création d'une disquette. L'Agent continue de lancer n'importe quel GAME.INI déjà créé, indépendamment de ceci.</value></data>
   <data name="Settings_PlatformEnabled" xml:space="preserve"><value>{0} activé.</value></data>
   <data name="Settings_PlatformDisabled" xml:space="preserve"><value>{0} désactivé.</value></data>
+  <data name="Settings_NfcEnabled" xml:space="preserve"><value>Activer la détection de cartes NFC/RFID (lecteur PC/SC)</value></data>
+  <data name="Settings_NfcDescription" xml:space="preserve"><value>Fonctionnalité expérimentale : nécessite un lecteur PC/SC physique (ex. ACR122U) et des cartes Mifare Classic. N'a jamais été testée sur un vrai lecteur — active-la seulement si tu en as un. Redémarre l'application pour appliquer ce changement.</value></data>
+  <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>Détection NFC activée.</value></data>
+  <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>Détection NFC désactivée.</value></data>
 
   <!-- Tray icon -->
   <data name="Tray_OpenFloppyGames" xml:space="preserve"><value>Ouvrir FloppyGames</value></data>
@@ -131,6 +140,17 @@
   <data name="LS_WriteCancelled" xml:space="preserve"><value>Écriture annulée.</value></data>
   <data name="LS_WriteSuccess" xml:space="preserve"><value>Disquette prête : « {0} » écrit sur {1}.</value></data>
   <data name="LS_WriteFailed" xml:space="preserve"><value>Échec de l'écriture sur le support — voir les journaux.</value></data>
+  <data name="LS_TargetTypeDrive" xml:space="preserve"><value>Disquette / clé USB</value></data>
+  <data name="LS_TargetTypeNfc" xml:space="preserve"><value>Carte NFC</value></data>
+  <data name="LS_Nfc_NoReaderDetected" xml:space="preserve"><value>Aucun lecteur NFC détecté.</value></data>
+  <data name="LS_Nfc_ReaderDetected" xml:space="preserve"><value>Lecteur détecté : {0}</value></data>
+  <data name="LS_Nfc_WaitingForCard" xml:space="preserve"><value>En attente d'une carte...</value></data>
+  <data name="LS_Nfc_CardDetected" xml:space="preserve"><value>Carte détectée — UID {0}</value></data>
+  <data name="LS_Nfc_RefreshReaderButton" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="LS_Nfc_WriteSuccess" xml:space="preserve"><value>Carte prête : « {0} » écrit (UID {1}).</value></data>
+  <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Échec de l'écriture sur la carte — voir les journaux.</value></data>
+  <data name="LS_Nfc_NoCardPresent" xml:space="preserve"><value>Présente une carte au lecteur avant d'écrire.</value></data>
+  <data name="LS_Nfc_CoverNotWritten" xml:space="preserve"><value>La jaquette choisie ne sera pas écrite sur la carte (pas assez de place).</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimer...</value></data>
@@ -151,4 +171,11 @@
   <data name="Core_Parser_OptionsMustBePositiveInt" xml:space="preserve"><value>[Options] {0} doit être un entier positif (valeur reçue : « {1} »).</value></data>
   <data name="Core_Parser_OptionsMustBeNonNegativeInt" xml:space="preserve"><value>[Options] {0} doit être un entier non négatif (valeur reçue : « {1} »).</value></data>
   <data name="Core_Parser_OptionsMustBeBool" xml:space="preserve"><value>[Options] {0} doit être « true » ou « false » (valeur reçue : « {1} »).</value></data>
+
+  <!-- Core: Nfc -->
+  <data name="Core_Nfc_UnsupportedCardType" xml:space="preserve"><value>Type de carte non pris en charge (seules les cartes Mifare Classic 1K/4K sont supportées).</value></data>
+  <data name="Core_Nfc_TooLarge" xml:space="preserve"><value>Trop volumineux pour la carte : {0} nécessaires, {1} disponibles.</value></data>
+  <data name="Core_Nfc_AuthenticationFailed" xml:space="preserve"><value>Échec de l'authentification sur le secteur {0} — cette carte a peut-être déjà été utilisée ailleurs.</value></data>
+  <data name="Core_Nfc_ExistingData" xml:space="preserve"><value>Cette carte contient déjà des données — l'écriture va les remplacer.</value></data>
+  <data name="Core_Nfc_ReaderCommunicationFailure" xml:space="preserve"><value>Erreur de communication avec le lecteur NFC : {0}</value></data>
 </root>

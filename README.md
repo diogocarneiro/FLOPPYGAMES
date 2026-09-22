@@ -115,6 +115,9 @@ na própria janela (escolher jogo → detalhes → capa → gravar):
 - **Catálogo partilhável** (`catalog/catalog.json`, versionado no repositório — sem rede): quando o jogo escolhido já está catalogado, preenche automaticamente o processo (verificado) e a descrição (já traduzida nos 5 idiomas), e usa a capa do catálogo para Epic/GOG quando existir uma. Ver [catalog/README.md](catalog/README.md) para adicionar entradas.
 - Geração automática do `GAME.INI`, incluindo as opções avançadas (timeout, atraso, encerramento suave).
 - Escrita direta do `GAME.INI` + capa para o suporte amovível selecionado, com validação de espaço e aviso antes de sobrescrever.
+- Alternativa a disquete/pen: gravar o mesmo `GAME.INI` num **cartão NFC/RFID** (Mifare Classic),
+  através de um leitor PC/SC ligado ao PC — ver [nota técnica](#nota-técnica-cartões-nfcrfid),
+  incluindo o aviso de que este caminho não foi verificado contra hardware real.
 - Desenho e impressão do label físico (impressão direta ou exportação para PNG).
 
 ### 3. Instalador (FloppyGames Setup)
@@ -188,12 +191,49 @@ O Label Studio e o Agent suportam três lojas, todas com o mecanismo confirmado 
   esquema real e cobertas por testes automatizados com dados sintéticos — mas o percurso completo
   só fica 100% confirmado com um jogo GOG realmente instalado.
 
+### Nota técnica: cartões NFC/RFID
+
+Suporte opcional (desligado por omissão, `AgentSettings.NfcEnabled`) para gravar o `GAME.INI` num
+cartão **Mifare Classic 1K/4K** em vez de uma disquete/pen, através de um leitor PC/SC genérico (ex.
+ACR122U) ligado ao PC. Cada cartão tem um UID de hardware próprio, mostrado no ecrã de arranque como
+"CARD ID" quando o lançamento é despoletado por um cartão.
+
+**Ao contrário de Steam/Epic/GOG, este mecanismo não foi verificado contra hardware real** — não
+havia nenhum leitor PC/SC ligado à máquina onde foi construído. É montado inteiramente a partir de
+documentação pública:
+
+- Comunicação PC/SC via o pacote NuGet [`PCSC`](https://github.com/danm-de/pcsc-sharp) — compilado
+  com sucesso contra a API real do pacote instalado (a única verificação possível sem hardware), mas
+  o comportamento em fio nunca foi exercitado.
+- Leitura/escrita de blocos via os comandos pseudo-APDU `FF 82` (carregar chave), `FF 86`
+  (autenticar setor), `FF B0` (ler bloco) e `FF D6` (escrever bloco) — convenção popularizada pelos
+  leitores ACR e largamente copiada por outros fabricantes, mas não universal.
+- Deteção do tipo de cartão (1K vs. 4K) a partir do ATR, seguindo a codificação documentada pelo
+  grupo de trabalho PC/SC Parte 3 para cartões contactless.
+
+O `GAME.INI` é gravado tal como já é escrito para disquete/pen (mesmo `GameIniWriter`/
+`GameIniParser`, sem formato novo), só fatiado em blocos de 16 bytes com um prefixo de comprimento —
+o bloco de fabrico (UID, só leitura) e o bloco *trailer* de cada setor (chaves + bits de acesso)
+ficam sempre de fora. Capacidade útil: **750 bytes** num Mifare 1K (a `DESCRIPTION` tem de ser
+curta), ~3438 bytes num 4K. A capa nunca é gravada no cartão — não há espaço. A autenticação usa
+sempre a chave de fábrica (`FFFFFFFFFFFF`); um cartão previamente usado noutro sistema falha a
+autenticação de forma explícita, em vez de silenciosamente.
+
+Arquitetura: uma pipeline paralela (`Core/Nfc/` + `Core/Launch/NfcCardSessionManager`), composta ao
+lado da pipeline de disquete/USB já existente em vez de a reaproveitar — um cartão não tem letra de
+unidade nem sistema de ficheiros, pelo que forçar essa abstração custaria mais risco do que a
+duplicação. Ver o checklist de validação manual no [ROADMAP.md](ROADMAP.md) para quando houver um
+leitor real disponível.
+
 ## Requisitos
 
 - Windows 10/11 (x64).
 - Cliente Steam instalado e autenticado.
 - **Drive de disquetes 3.5" USB** (suporte principal) — ou, em alternativa, uma pen USB dedicada por jogo.
 - .NET 10 Desktop Runtime (incluído no instalador).
+- *Opcional, não verificado contra hardware real:* leitor PC/SC (ex. ACR122U) + cartões Mifare
+  Classic 1K/4K, para usar cartões NFC/RFID em vez de disquete/pen — ver
+  [nota técnica](#nota-técnica-cartões-nfcrfid).
 
 ## Instalação
 
@@ -261,6 +301,7 @@ FLOPPYGAMES/
 | Deteção de mídia | `WMI (Win32_VolumeChangeEvent)` + sondagem dedicada para disquetes | Eventos para pens USB (sem *polling*); sondagem leve e confinada a `A:\`/`B:\` para troca de disco em drives de disquete, onde o Windows não notifica por evento. |
 | Lançamento por plataforma | `steam://run/`, URI da Epic, `.exe` direto na GOG | Cada loja delega a validação/atualização do jogo em si mesma, quando tem protocolo para isso; a GOG não tem, por isso é a exceção. |
 | Biblioteca GOG | `Microsoft.Data.Sqlite` sobre `galaxy-2.0.db` (só-leitura) | O GOG Galaxy 2.0 guarda tudo numa base de dados SQLite própria, não no Registo — única dependência externa nova, justificada por não haver alternativa razoável a implementar à mão (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)). |
+| Cartões NFC/RFID (opcional) | `PCSC` sobre `winscard.dll` | Wrapper .NET padrão para PC/SC; não normaliza os comandos Mifare em si (pseudo-APDU manual) — **não verificado contra hardware real** (ver [nota técnica](#nota-técnica-cartões-nfcrfid)). |
 | Instalador | Inno Setup | Leve, scriptável, suporta tarefas opcionais (arranque automático). |
 | Persistência de config | `settings.json` (Agent) + Registo do Windows (para o toggle de arranque) | Simples, sem dependência de base de dados própria do FloppyGames. |
 

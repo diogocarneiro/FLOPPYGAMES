@@ -104,6 +104,12 @@
                         <Rectangle Canvas.Left="4" Canvas.Top="10" Width="21" Height="18" Fill="#FF3A6EA5" RadiusX="4" RadiusY="4" />
                         <Rectangle Canvas.Left="8" Canvas.Top="15" Width="13" Height="4" Fill="#FFE8E8E8" />
                     </Canvas>
+                    <Canvas x:Name="NfcIcon" DockPanel.Dock="Left" Width="30" Height="30" Visibility="Collapsed">
+                        <Rectangle Canvas.Left="1" Canvas.Top="6" Width="28" Height="18" Fill="#FF3A6EA5" RadiusX="3" RadiusY="3" />
+                        <Rectangle Canvas.Left="5" Canvas.Top="12" Width="7" Height="6" Fill="#FFE8E8E8" RadiusX="1" RadiusY="1" />
+                        <Path Stroke="#FFE8E8E8" StrokeThickness="2" Data="M 16,17 A 4,4 0 0 1 16,9" />
+                        <Path Stroke="#FFE8E8E8" StrokeThickness="2" Data="M 20,20 A 8,8 0 0 1 20,6" />
+                    </Canvas>
                     <TextBlock x:Name="MediaKindLabel" FontFamily="Consolas" FontSize="14" FontWeight="Bold"
                                Foreground="#FF39FF6A" VerticalAlignment="Center" Margin="14,0,0,0" />
                 </DockPanel>
@@ -122,6 +128,8 @@
                         <TextBlock x:Name="PlaytimeText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
                         <TextBlock x:Name="LastSessionText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6" Margin="0,0,0,6" />
                         <TextBlock x:Name="AchievementsText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6"
+                                   Margin="0,0,0,6" Visibility="Collapsed" />
+                        <TextBlock x:Name="CardIdText" FontFamily="Consolas" FontSize="14" Foreground="#FFB9E8C6"
                                    Visibility="Collapsed" />
                     </StackPanel>
                 </Border>

@@ -26,6 +26,8 @@ public partial class SettingsWindow : Window
         LanguageRestartNoteText.Text = Strings.Settings_LanguageRestartNote;
         PlatformsLabelText.Text = Strings.Settings_PlatformsLabel;
         PlatformsDescriptionText.Text = Strings.Settings_PlatformsDescription;
+        NfcEnabledCheckBox.Content = Strings.Settings_NfcEnabled;
+        NfcDescriptionText.Text = Strings.Settings_NfcDescription;
         LogsFolderLabelText.Text = Strings.Settings_LogsFolder;
         OpenLogsButton.Content = Strings.Settings_OpenButton;
         SteamApiKeyLabelText.Text = Strings.Settings_SteamApiKeyLabel;
@@ -53,6 +55,7 @@ public partial class SettingsWindow : Window
         SteamEnabledCheckBox.IsChecked = settings.SteamEnabled;
         EpicEnabledCheckBox.IsChecked = settings.EpicEnabled;
         GogEnabledCheckBox.IsChecked = settings.GogEnabled;
+        NfcEnabledCheckBox.IsChecked = settings.NfcEnabled;
         _initializing = false;
     }
 
@@ -127,6 +130,20 @@ public partial class SettingsWindow : Window
 
     private void OnGogEnabledToggled(object sender, RoutedEventArgs e) =>
         OnPlatformToggled("GOG", GogEnabledCheckBox.IsChecked == true, (settings, enabled) => settings with { GogEnabled = enabled });
+
+    private void OnNfcEnabledToggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { NfcEnabled = NfcEnabledCheckBox.IsChecked == true });
+        StatusText.Text = NfcEnabledCheckBox.IsChecked == true
+            ? Strings.Settings_NfcEnabledOn
+            : Strings.Settings_NfcEnabledOff;
+    }
 
     private void OnPlatformToggled(string platformName, bool enabled, Func<AgentSettings, bool, AgentSettings> apply)
     {

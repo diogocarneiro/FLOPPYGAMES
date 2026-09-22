@@ -45,10 +45,17 @@ public partial class SplashWindow : Window
         DescriptionText.Text = description ?? string.Empty;
         DescriptionText.Visibility = string.IsNullOrWhiteSpace(description) ? Visibility.Collapsed : Visibility.Visible;
 
-        var isFloppy = mediaKind == MediaKind.Floppy;
-        FloppyIcon.Visibility = isFloppy ? Visibility.Visible : Visibility.Collapsed;
-        UsbIcon.Visibility = isFloppy ? Visibility.Collapsed : Visibility.Visible;
-        MediaKindLabel.Text = SpaceOutLetters(isFloppy ? Strings.Splash_FloppyDetected : Strings.Splash_UsbDetected);
+        FloppyIcon.Visibility = mediaKind == MediaKind.Floppy ? Visibility.Visible : Visibility.Collapsed;
+        UsbIcon.Visibility = mediaKind == MediaKind.Usb ? Visibility.Visible : Visibility.Collapsed;
+        NfcIcon.Visibility = mediaKind == MediaKind.Nfc ? Visibility.Visible : Visibility.Collapsed;
+        MediaKindLabel.Text = SpaceOutLetters(mediaKind switch
+        {
+            MediaKind.Floppy => Strings.Splash_FloppyDetected,
+            MediaKind.Nfc => Strings.Splash_NfcDetected,
+            _ => Strings.Splash_UsbDetected,
+        });
+
+        CardIdText.Visibility = Visibility.Collapsed;
 
         SizeText.Text = FormatStatLine(Strings.Splash_StatSupport, Strings.Splash_Checking);
         InstalledText.Text = FormatStatLine(platform.ToString().ToUpperInvariant(), Strings.Splash_Checking);
@@ -89,6 +96,9 @@ public partial class SplashWindow : Window
     }
 
     public void SetStatus(string message) => StatusText.Text = message;
+
+    /// <summary>Mostra o UID do cartão NFC que despoletou o lançamento — sem efeito para disquete/USB.</summary>
+    public void SetCardId(string? cardUid) => SetOptionalStatLine(CardIdText, Strings.Splash_StatCardId, cardUid);
 
     /// <summary>
     /// Liga/desliga o varrimento CRT. Quando ligado, desliza continuamente devagar (sem picos
@@ -144,6 +154,23 @@ public partial class SplashWindow : Window
         {
             AchievementsText.Visibility = Visibility.Collapsed;
         }
+    }
+
+    /// <summary>
+    /// Versão simplificada de <see cref="SetSummary"/> para lançamentos via cartão NFC: não há
+    /// biblioteca de plataforma a consultar sem duplicar os scanners de Steam/Epic/GOG só para
+    /// isto — mostra apenas o espaço ocupado no próprio cartão, e esconde as linhas que só fazem
+    /// sentido com uma biblioteca instalada localmente.
+    /// </summary>
+    public void SetNfcCardSummary(long cardBytesUsed)
+    {
+        SizeText.Text = FormatStatLine(Strings.Splash_StatSupport, FormatBytes(cardBytesUsed));
+        InstalledText.Visibility = Visibility.Collapsed;
+        BuildText.Visibility = Visibility.Collapsed;
+        UpdatedText.Visibility = Visibility.Collapsed;
+        PlaytimeText.Visibility = Visibility.Collapsed;
+        LastSessionText.Visibility = Visibility.Collapsed;
+        AchievementsText.Visibility = Visibility.Collapsed;
     }
 
     private static void SetOptionalStatLine(TextBlock textBlock, string label, string? value)

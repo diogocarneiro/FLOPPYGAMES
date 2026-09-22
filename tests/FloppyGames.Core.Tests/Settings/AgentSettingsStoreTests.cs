@@ -33,6 +33,7 @@ public class AgentSettingsStoreTests : IDisposable
         Assert.True(settings.SteamEnabled);
         Assert.False(settings.EpicEnabled);
         Assert.False(settings.GogEnabled);
+        Assert.False(settings.NfcEnabled);
     }
 
     [Fact]
@@ -46,6 +47,17 @@ public class AgentSettingsStoreTests : IDisposable
         Assert.False(settings.SteamEnabled);
         Assert.True(settings.EpicEnabled);
         Assert.True(settings.GogEnabled);
+    }
+
+    [Fact]
+    public void Save_ThenLoad_RoundTripsNfcEnabled()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { NfcEnabled = true });
+        var settings = store.Load();
+
+        Assert.True(settings.NfcEnabled);
     }
 
     [Fact]

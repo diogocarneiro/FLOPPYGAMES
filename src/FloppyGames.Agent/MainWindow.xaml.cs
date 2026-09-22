@@ -1,12 +1,14 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Text;
 using System.Windows;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Nfc;
 using FloppyGames.Core.Platforms;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
@@ -22,6 +24,10 @@ public partial class MainWindow : Window
     private readonly GameLaunchSummaryBuilder _summaryBuilder;
     private readonly AgentSettingsStore _settingsStore;
     private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, SplashWindow> _nfcSplashWindows = new(StringComparer.OrdinalIgnoreCase);
+    private PcscMifareCardGateway? _nfcGateway;
+    private NfcGameMediaService? _nfcMediaService;
+    private NfcCardSessionManager? _nfcSessionManager;
     private bool _realShutdownRequested;
 
     public GameSessionManager SessionManager => _sessionManager;
@@ -81,7 +87,49 @@ public partial class MainWindow : Window
         _mediaService.Start();
         AppendStatus(Strings.MainWindow_Watching);
 
+        if (_settingsStore.Load().NfcEnabled)
+        {
+            StartNfcStack(launcher);
+        }
+
         Closed += OnWindowClosed;
+    }
+
+    /// <summary>
+    /// Compõe a pilha NFC (leitor → deteção de cartão → leitura → sessão de jogo) e liga-a aos
+    /// mesmos handlers de splash/estado da pipeline de disquete/USB. Só é chamado quando
+    /// <see cref="AgentSettings.NfcEnabled"/> está ativo — máquinas sem esse opt-in nunca tocam
+    /// no subsistema PC/SC. Nunca deixa uma falha de arranque do PC/SC (serviço "Cartão
+    /// Inteligente" desligado, sem leitor instalado, etc.) derrubar o resto do Agent: fica só um
+    /// aviso no log e a deteção NFC simplesmente não ativa nesta sessão.
+    /// </summary>
+    private void StartNfcStack(CompositeGameLauncher launcher)
+    {
+        try
+        {
+            var readerDetector = new PcscReaderDetector();
+            var presenceProbe = new PcscNfcCardPresenceProbe();
+            _nfcGateway = new PcscMifareCardGateway();
+
+            var nfcWatcher = new PollingNfcCardWatcher(readerDetector, presenceProbe, _logger);
+            var nfcReader = new NfcCardConfigReader(_nfcGateway);
+            _nfcMediaService = new NfcGameMediaService(nfcWatcher, nfcReader, _logger);
+            _nfcMediaService.CardInserted += OnCardInserted;
+            _nfcMediaService.CardRemoved += OnCardRemoved;
+            _nfcMediaService.InvalidCardDetected += OnInvalidCardDetected;
+
+            _nfcSessionManager = new NfcCardSessionManager(_nfcMediaService, launcher, new Win32ProcessGateway(), _logger);
+            _nfcSessionManager.LaunchStarting += OnNfcLaunchStarting;
+            _nfcSessionManager.GameLaunched += OnNfcGameLaunched;
+            _nfcSessionManager.GameLaunchFailed += OnNfcGameLaunchFailed;
+            _nfcSessionManager.GameStopped += OnNfcGameStopped;
+
+            _nfcMediaService.Start();
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Falha ao iniciar a deteção NFC — a continuar sem ela nesta sessão.");
+        }
     }
 
     /// <summary>
@@ -190,6 +238,65 @@ public partial class MainWindow : Window
     private void OnGameStopped(object? sender, GameStoppedEventArgs e) =>
         AppendStatus(Strings.MainWindow_GameStopped(e.Config.Title));
 
+    private void OnCardInserted(object? sender, CardInsertedEventArgs e) =>
+        AppendStatus(Strings.MainWindow_CardInserted(e.Uid, e.Config.Title, e.Config.Platform.ToString(), e.Config.Process));
+
+    private void OnCardRemoved(object? sender, CardRemovedEventArgs e) =>
+        AppendStatus(Strings.MainWindow_CardRemoved(e.Uid, e.Config.Title));
+
+    private void OnInvalidCardDetected(object? sender, InvalidCardEventArgs e) =>
+        AppendStatus(Strings.MainWindow_InvalidCard(e.Uid, string.Join(" | ", e.Errors)));
+
+    private void OnNfcLaunchStarting(object? sender, NfcCardLaunchStartingEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            var splash = new SplashWindow();
+            var settings = _settingsStore.Load();
+            splash.SetGame(e.Config.Title, e.Config.Description, coverPath: null, MediaKind.Nfc, e.Config.Platform);
+            splash.SetCardId(e.Uid);
+            splash.SetCrtEffectEnabled(settings.CrtEffectEnabled);
+            splash.SetNfcCardSummary(Encoding.UTF8.GetByteCount(GameIniWriter.Write(e.Config)));
+
+            splash.SetStatus(LaunchingStatusText(e.Config.Platform));
+            splash.StartProgress(TimeSpan.FromSeconds(e.Config.LaunchDelaySeconds + e.Config.WatchTimeoutSeconds));
+            splash.Show();
+
+            if (_nfcSplashWindows.Remove(e.Uid, out var previous))
+            {
+                previous.Close();
+            }
+
+            _nfcSplashWindows[e.Uid] = splash;
+            AppendStatus(Strings.MainWindow_Launching(e.Config.Title));
+        });
+
+    private void OnNfcGameLaunched(object? sender, NfcCardLaunchedEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            if (_nfcSplashWindows.Remove(e.Uid, out var splash))
+            {
+                splash.ShowSuccessAndAutoClose(Strings.Splash_GameRunning(e.Config.Title));
+            }
+
+            AppendStatus(Strings.MainWindow_LaunchConfirmed(e.Config.Title));
+        });
+
+    private void OnNfcGameLaunchFailed(object? sender, NfcCardLaunchFailedEventArgs e) =>
+        Dispatcher.Invoke(() =>
+        {
+            var reason = LocalizeFailureReason(e.Reason);
+
+            if (_nfcSplashWindows.Remove(e.Uid, out var splash))
+            {
+                splash.ShowErrorAndAutoClose(reason);
+            }
+
+            AppendStatus(Strings.MainWindow_LaunchFailed(e.Config.Title, reason));
+        });
+
+    private void OnNfcGameStopped(object? sender, NfcCardStoppedEventArgs e) =>
+        AppendStatus(Strings.MainWindow_GameStopped(e.Config.Title));
+
     private static string LaunchingStatusText(GamePlatform platform) => platform switch
     {
         GamePlatform.Steam => Strings.Splash_LaunchingSteam,
@@ -213,5 +320,8 @@ public partial class MainWindow : Window
         _logger.Information("FloppyGames Agent a terminar.");
         _sessionManager.Dispose();
         _mediaService.Dispose();
+        _nfcSessionManager?.Dispose();
+        _nfcMediaService?.Dispose();
+        _nfcGateway?.Dispose();
     }
 }

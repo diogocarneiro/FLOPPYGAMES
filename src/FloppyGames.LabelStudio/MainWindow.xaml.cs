@@ -7,6 +7,7 @@ using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Media;
+using FloppyGames.Core.Nfc;
 using FloppyGames.Core.Platforms;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Steam;
@@ -25,12 +26,17 @@ public partial class MainWindow : Window
     private readonly ICoverArtProvider _coverArtProvider;
     private readonly FloppyMediaWriter _mediaWriter;
     private readonly GameCatalog _catalog;
+    private readonly INfcReaderDetector _nfcReaderDetector;
+    private readonly PcscMifareCardGateway _nfcGateway;
+    private readonly NfcCardConfigWriter _nfcCardWriter;
+    private readonly PollingNfcCardWatcher _nfcCardWatcher;
 
     private List<DiscoveredGame> _allGames = [];
     private DiscoveredGame? _selectedGame;
     private byte[]? _coverBytes;
     private string _coverFileName = "cover.jpg";
     private CancellationTokenSource? _coverFetchCts;
+    private NfcCardPresence? _presentNfcCard;
 
     public MainWindow()
     {
@@ -48,6 +54,15 @@ public partial class MainWindow : Window
         _coverArtProvider = new SteamCdnCoverArtProvider();
         _mediaWriter = new FloppyMediaWriter(new FileSystemDriveInspector());
         _catalog = new GameCatalog();
+
+        _nfcReaderDetector = new PcscReaderDetector();
+        _nfcGateway = new PcscMifareCardGateway();
+        _nfcCardWriter = new NfcCardConfigWriter(_nfcGateway);
+        _nfcCardWatcher = new PollingNfcCardWatcher(_nfcReaderDetector, new PcscNfcCardPresenceProbe(), _logger);
+        _nfcCardWatcher.CardArrived += OnNfcCardArrived;
+        _nfcCardWatcher.CardRemoved += OnNfcCardRemoved;
+
+        Closed += OnMainWindowClosed;
 
         RefreshDrives();
 
@@ -108,8 +123,11 @@ public partial class MainWindow : Window
         GracefulShutdownBox.Content = Strings.LS_GracefulShutdownField;
         Step3Header.Text = Strings.LS_Step3;
         Step4Header.Text = Strings.LS_Step4;
+        TargetTypeDriveRadio.Content = Strings.LS_TargetTypeDrive;
+        TargetTypeNfcRadio.Content = Strings.LS_TargetTypeNfc;
         TargetDriveLabel.Text = Strings.LS_TargetDrive;
         RefreshDrivesButton.Content = Strings.LS_RefreshButton;
+        RefreshNfcReaderButton.Content = Strings.LS_Nfc_RefreshReaderButton;
         WriteButton.Content = Strings.LS_WriteButton;
         PrintLabelButton.Content = Strings.LS_PrintButton;
         ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
@@ -372,16 +390,70 @@ public partial class MainWindow : Window
 
     private void OnRefreshDrivesClicked(object sender, RoutedEventArgs e) => RefreshDrives();
 
+    /// <summary>
+    /// Alterna entre gravar numa disquete/pen (letra de unidade) e gravar num cartão NFC. A
+    /// sondagem do leitor NFC só corre enquanto este modo estiver selecionado — evita chamadas
+    /// PC/SC desnecessárias quando ninguém pediu para usar um cartão.
+    /// </summary>
+    private void OnTargetTypeChanged(object sender, RoutedEventArgs e)
+    {
+        if (TargetTypeNfcRadio.IsChecked == true)
+        {
+            DriveTargetPanel.Visibility = Visibility.Collapsed;
+            NfcTargetPanel.Visibility = Visibility.Visible;
+            RefreshNfcReaderStatus();
+            _nfcCardWatcher.Start();
+        }
+        else
+        {
+            NfcTargetPanel.Visibility = Visibility.Collapsed;
+            DriveTargetPanel.Visibility = Visibility.Visible;
+            _nfcCardWatcher.Stop();
+        }
+    }
+
+    private void OnRefreshNfcReaderClicked(object sender, RoutedEventArgs e) => RefreshNfcReaderStatus();
+
+    private void RefreshNfcReaderStatus()
+    {
+        var readers = _nfcReaderDetector.ListConnectedReaders();
+        NfcReaderStatusText.Text = readers.Count > 0
+            ? Strings.LS_Nfc_ReaderDetected(readers[0])
+            : Strings.LS_Nfc_NoReaderDetected;
+
+        NfcCardStatusText.Text = _presentNfcCard is { } present
+            ? Strings.LS_Nfc_CardDetected(present.Uid)
+            : Strings.LS_Nfc_WaitingForCard;
+    }
+
+    private void OnNfcCardArrived(object? sender, NfcCardPresence e) =>
+        Dispatcher.Invoke(() =>
+        {
+            _presentNfcCard = e;
+            NfcCardStatusText.Text = Strings.LS_Nfc_CardDetected(e.Uid);
+        });
+
+    private void OnNfcCardRemoved(object? sender, NfcCardPresence e) =>
+        Dispatcher.Invoke(() =>
+        {
+            if (_presentNfcCard is { } current && string.Equals(current.Uid, e.Uid, StringComparison.OrdinalIgnoreCase))
+            {
+                _presentNfcCard = null;
+            }
+
+            NfcCardStatusText.Text = Strings.LS_Nfc_WaitingForCard;
+        });
+
+    private void OnMainWindowClosed(object? sender, EventArgs e)
+    {
+        _nfcCardWatcher.Dispose();
+        _nfcGateway.Dispose();
+    }
+
     private void OnWriteClicked(object sender, RoutedEventArgs e)
     {
         if (_selectedGame is not { } selectedGame)
         {
-            return;
-        }
-
-        if (DriveCombo.SelectedItem is not string driveRoot)
-        {
-            WriteStatusText.Text = Strings.LS_ChooseTargetDrive;
             return;
         }
 
@@ -420,6 +492,24 @@ public partial class MainWindow : Window
             GracefulShutdown = GracefulShutdownBox.IsChecked == true,
         };
 
+        if (TargetTypeNfcRadio.IsChecked == true)
+        {
+            WriteToNfcCard(config);
+        }
+        else
+        {
+            WriteToDrive(config);
+        }
+    }
+
+    private void WriteToDrive(GameConfig config)
+    {
+        if (DriveCombo.SelectedItem is not string driveRoot)
+        {
+            WriteStatusText.Text = Strings.LS_ChooseTargetDrive;
+            return;
+        }
+
         var check = _mediaWriter.Check(driveRoot, config, _coverBytes);
 
         if (check.Status == MediaWriteCheckStatus.Blocked)
@@ -449,6 +539,51 @@ public partial class MainWindow : Window
         {
             _logger.Error(ex, "Falha ao escrever para {Drive}.", driveRoot);
             WriteStatusText.Text = Strings.LS_WriteFailed;
+        }
+    }
+
+    private void WriteToNfcCard(GameConfig config)
+    {
+        if (_presentNfcCard is not { } card)
+        {
+            WriteStatusText.Text = Strings.LS_Nfc_NoCardPresent;
+            return;
+        }
+
+        if (_coverBytes is not null)
+        {
+            WriteStatusText.Text = Strings.LS_Nfc_CoverNotWritten;
+        }
+
+        var check = _nfcCardWriter.Check(card.ReaderName, card.CardType, config);
+
+        if (check.Status == NfcCardWriteCheckStatus.Blocked)
+        {
+            WriteStatusText.Text = check.Message;
+            return;
+        }
+
+        if (check.Status == NfcCardWriteCheckStatus.NeedsConfirmation)
+        {
+            var confirmed = MessageBox.Show(check.Message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirmed != MessageBoxResult.Yes)
+            {
+                WriteStatusText.Text = Strings.LS_WriteCancelled;
+                return;
+            }
+        }
+
+        try
+        {
+            _nfcCardWriter.Write(card.ReaderName, card.CardType, config);
+            WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
+            _logger.Information(
+                "GAME.INI gravado no cartão NFC UID {Uid} para {Title} ({Platform}).", card.Uid, config.Title, config.Platform);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Falha ao gravar no cartão NFC UID {Uid}.", card.Uid);
+            WriteStatusText.Text = Strings.LS_Nfc_WriteFailed;
         }
     }
 

@@ -95,11 +95,27 @@
             <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
                 <TextBlock x:Name="Step4Header" Style="{StaticResource StepHeader}" />
 
-                <TextBlock x:Name="TargetDriveLabel" Style="{StaticResource FieldLabel}" />
-                <DockPanel Margin="0,0,0,12">
-                    <Button x:Name="RefreshDrivesButton" DockPanel.Dock="Right" Width="80" Click="OnRefreshDrivesClicked" />
-                    <ComboBox x:Name="DriveCombo" Margin="0,0,8,0" />
-                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <RadioButton x:Name="TargetTypeDriveRadio" GroupName="TargetType" IsChecked="True"
+                                 Margin="0,0,20,0" Checked="OnTargetTypeChanged" />
+                    <RadioButton x:Name="TargetTypeNfcRadio" GroupName="TargetType" Checked="OnTargetTypeChanged" />
+                </StackPanel>
+
+                <StackPanel x:Name="DriveTargetPanel">
+                    <TextBlock x:Name="TargetDriveLabel" Style="{StaticResource FieldLabel}" />
+                    <DockPanel Margin="0,0,0,12">
+                        <Button x:Name="RefreshDrivesButton" DockPanel.Dock="Right" Width="80" Click="OnRefreshDrivesClicked" />
+                        <ComboBox x:Name="DriveCombo" Margin="0,0,8,0" />
+                    </DockPanel>
+                </StackPanel>
+
+                <StackPanel x:Name="NfcTargetPanel" Visibility="Collapsed">
+                    <DockPanel Margin="0,0,0,8">
+                        <Button x:Name="RefreshNfcReaderButton" DockPanel.Dock="Right" Width="80" Click="OnRefreshNfcReaderClicked" />
+                        <TextBlock x:Name="NfcReaderStatusText" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0" />
+                    </DockPanel>
+                    <TextBlock x:Name="NfcCardStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,12" />
+                </StackPanel>
 
                 <Button x:Name="WriteButton" Height="32" Click="OnWriteClicked" />
                 <Button x:Name="PrintLabelButton" Height="32" Margin="0,8,0,0"

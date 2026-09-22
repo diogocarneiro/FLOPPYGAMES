@@ -139,7 +139,33 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   teste estava vazia, por isso falta a confirmação final com um jogo GOG realmente instalado.
   Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
-- [ ] Suporte a etiquetas NFC/RFID coladas na disquete como gatilho alternativo à deteção de volume (mais fiável em pens genéricas).
+- [x] Suporte a cartões NFC/RFID (Mifare Classic 1K/4K, via leitor PC/SC como o ACR122U) como
+  gatilho alternativo à disquete/pen: o Label Studio deteta o leitor e grava o GAME.INI no cartão,
+  cada cartão expõe o seu UID de hardware, e o Agent mostra-o na splash como "CARD ID" ao lançar a
+  partir de um cartão. **NÃO verificado contra hardware real** — ao contrário de Steam/Epic/GOG
+  (todos verificados com dados/hardware reais desta máquina antes de serem dados como prontos), não
+  havia nenhum leitor PC/SC ligado a esta máquina nesta sessão. Construído inteiramente a partir de
+  documentação pública do protocolo PC/SC (pacote NuGet `PCSC`, comandos pseudo-APDU `FF 82/86/B0/D6`
+  popularizados pelos leitores ACR) e do layout de setores/blocos do Mifare Classic — compilado com
+  sucesso contra a API real do pacote `PCSC` instalado (a única verificação possível sem hardware),
+  mas o comportamento em fio (autenticação, leitura/escrita de blocos, deteção de tipo de cartão via
+  ATR) fica por confirmar. Arquitetura: pipeline paralela em `Core/Nfc/` + `Core/Launch/NfcCardSessionManager`,
+  composta lado a lado com a pipeline de disquete/USB existente (não reaproveita `driveRoot` como
+  chave — um cartão não tem sistema de ficheiros nem espaço para capa). Formato de gravação: reaproveita
+  o texto GAME.INI já existente (`GameIniWriter`/`GameIniParser`), fatiado em blocos de 16 bytes com um
+  prefixo de comprimento — sem inventar um formato binário novo. Capacidade útil: 750 bytes num Mifare
+  1K (752 brutos − prefixo), ~3438 bytes num 4K, excluindo sempre o bloco de fabrico (UID) e os blocos
+  trailer (chaves/bits de acesso) de cada setor. Autenticação só com a chave de fábrica
+  (`FFFFFFFFFFFF`) — nunca re-chaveia um setor. Capacidade opcional e desligada por omissão
+  (`AgentSettings.NfcEnabled`), para máquinas sem leitor nunca tocarem no subsistema PC/SC.
+  **Checklist de validação manual, para quando houver um leitor real disponível:**
+  - [ ] Leitor ligado sem cartão presente → Label Studio mostra "à espera de cartão", não "sem leitor".
+  - [ ] Cartão Mifare Classic 1K em branco → UID mostrado, escrita bem-sucedida, releitura reconstrói o `GameConfig` original.
+  - [ ] Cartão previamente usado noutro sistema (chaves não-standard) → erro de autenticação claro, sem exceção nem escrita parcial.
+  - [ ] Etiqueta não-Mifare-Classic (ex. NTAG) → tipo de cartão não suportado, sem crash nem leitura incorreta.
+  - [ ] Desligar o leitor a meio de uma sessão do Agent (com `NfcEnabled` ativo) → um aviso no log, disquete/USB continuam a funcionar normalmente.
+  - [ ] Descrição longa que exceda os 750 bytes úteis → bloqueado com a contagem de bytes correta, sem escrita parcial.
+  - [ ] Aproximar um cartão gravado ao leitor ligado ao Agent → mesmo fluxo de lançamento/splash/terminação-na-remoção da disquete, com "CARD ID" visível na splash.
 
 ---
 
