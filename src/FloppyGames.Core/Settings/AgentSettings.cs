@@ -29,4 +29,12 @@ public sealed record AgentSettings
     public bool GogEnabled { get; init; }
 
     public bool NfcEnabled { get; init; }
+
+    /// <summary>
+    /// Palavra-passe opcional usada para proteger cartões NFC/RFID (ver <c>NfcCardConfigWriter.ProtectWithPassword</c>)
+    /// — partilhada entre o Label Studio (que a usa para proteger, opt-in por cartão) e o Agent
+    /// (que precisa dela para continuar a ler cartões já protegidos). Sem password configurada, a
+    /// opção de proteger um cartão no Label Studio fica desativada.
+    /// </summary>
+    public string? NfcCardPassword { get; init; }
 }

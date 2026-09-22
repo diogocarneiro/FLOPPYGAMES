@@ -61,6 +61,17 @@ public class AgentSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Save_ThenLoad_RoundTripsNfcCardPassword()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { NfcCardPassword = "hunter2" });
+        var settings = store.Load();
+
+        Assert.Equal("hunter2", settings.NfcCardPassword);
+    }
+
+    [Fact]
     public void Save_ThenLoad_RoundTripsPlayFloppySound()
     {
         var store = new AgentSettingsStore(_settingsPath);

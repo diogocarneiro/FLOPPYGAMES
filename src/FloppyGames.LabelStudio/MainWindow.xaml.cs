@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _coverFetchCts;
     private NfcCardPresence? _presentNfcCard;
     private (NfcCardPresence Card, GameConfig Config)? _pendingNfcFormatConfig;
+    private (NfcCardPresence Card, GameConfig Config)? _pendingNfcProtectConfig;
+    private bool _settingProtectCheckboxProgrammatically;
 
     public MainWindow()
     {
@@ -137,6 +139,8 @@ public partial class MainWindow : Window
         RefreshNfcReaderButton.Content = Strings.LS_Nfc_RefreshReaderButton;
         WriteButton.Content = Strings.LS_WriteButton;
         FormatCardButton.Content = Strings.LS_Nfc_FormatButton;
+        ProtectCardCheckBox.Content = Strings.LS_Nfc_ProtectCheckbox;
+        ProtectCardHintText.Text = Strings.LS_Nfc_ProtectNoPasswordHint;
         PrintLabelButton.Content = Strings.LS_PrintButton;
         ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
     }
@@ -219,6 +223,8 @@ public partial class MainWindow : Window
         WriteStatusText.Text = string.Empty;
         FormatCardButton.Visibility = Visibility.Collapsed;
         _pendingNfcFormatConfig = null;
+        NfcBlockLogPanel.Visibility = Visibility.Collapsed;
+        ResetProtectCardPanel();
 
         _coverFetchCts?.Cancel();
         CoverImage.Source = null;
@@ -561,6 +567,7 @@ public partial class MainWindow : Window
     private async Task WriteToNfcCardAsync(GameConfig config)
     {
         FormatCardButton.Visibility = Visibility.Collapsed;
+        ResetProtectCardPanel();
 
         if (_presentNfcCard is not { } card)
         {
@@ -574,10 +581,16 @@ public partial class MainWindow : Window
         }
 
         SetNfcOperationInProgress(true);
+        ClearNfcBlockLog();
+        var nfcCardPassword = new AgentSettingsStore().Load().NfcCardPassword;
+        IReadOnlyList<byte[]>? extraKeys = string.IsNullOrWhiteSpace(nfcCardPassword)
+            ? null
+            : [NfcCardPasswordKey.Derive(nfcCardPassword)];
+
         try
         {
             WriteStatusText.Text = Strings.LS_Nfc_Checking;
-            var check = await Task.Run(() => _nfcCardWriter.Check(card.ReaderName, card.CardType, config));
+            var check = await Task.Run(() => _nfcCardWriter.Check(card.ReaderName, card.CardType, config, extraKeys));
 
             if (check.Status == NfcCardWriteCheckStatus.AuthenticationFailed)
             {
@@ -607,13 +620,14 @@ public partial class MainWindow : Window
                 }
             }
 
-            var progress = new Progress<(int Current, int Total)>(
-                p => WriteStatusText.Text = Strings.LS_Nfc_WriteProgress(p.Current, p.Total));
-
-            await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, progress));
+            await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, CreateNfcWriteProgress(), extraKeys));
             WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
             _logger.Information(
                 "GAME.INI gravado no cartão NFC UID {Uid} para {Title} ({Platform}).", card.Uid, config.Title, config.Platform);
+
+            _pendingNfcProtectConfig = (card, config);
+            ProtectCardHintText.Visibility = string.IsNullOrWhiteSpace(nfcCardPassword) ? Visibility.Visible : Visibility.Collapsed;
+            ProtectCardPanel.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {
@@ -643,13 +657,12 @@ public partial class MainWindow : Window
 
         FormatCardButton.Visibility = Visibility.Collapsed;
         SetNfcOperationInProgress(true);
+        ClearNfcBlockLog();
 
         try
         {
-            var progress = new Progress<(int Current, int Total)>(
-                p => WriteStatusText.Text = Strings.LS_Nfc_WriteProgress(p.Current, p.Total));
-
-            var formatted = await Task.Run(() => _nfcCardWriter.WriteMagic(card.ReaderName, card.CardType, config, progress));
+            var formatted = await Task.Run(
+                () => _nfcCardWriter.WriteMagic(card.ReaderName, card.CardType, config, CreateNfcWriteProgress()));
 
             if (formatted)
             {
@@ -674,13 +687,114 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Reescreve o trailer do(s) setor(es) usados com a chave derivada da password configurada em
+    /// Definições — ação explícita, opt-in por cartão, só disponível logo depois de uma gravação
+    /// normal ter tido sucesso (ver <see cref="_pendingNfcProtectConfig"/>). Ao contrário da
+    /// gravação normal, um trailer mal escrito pode bloquear o setor permanentemente num cartão
+    /// genuíno — por isso pede confirmação explícita antes de continuar.
+    /// </summary>
+    private async void OnProtectCardToggled(object sender, RoutedEventArgs e)
+    {
+        if (_settingProtectCheckboxProgrammatically || ProtectCardCheckBox.IsChecked != true)
+        {
+            return;
+        }
+
+        if (_pendingNfcProtectConfig is not { } pending)
+        {
+            SetProtectCheckboxChecked(false);
+            return;
+        }
+
+        var password = new AgentSettingsStore().Load().NfcCardPassword;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            SetProtectCheckboxChecked(false);
+            return;
+        }
+
+        var confirmed = MessageBox.Show(Strings.LS_Nfc_ProtectConfirm, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirmed != MessageBoxResult.Yes)
+        {
+            SetProtectCheckboxChecked(false);
+            return;
+        }
+
+        var (card, config) = pending;
+        SetNfcOperationInProgress(true);
+        ClearNfcBlockLog();
+
+        try
+        {
+            WriteStatusText.Text = Strings.LS_Nfc_Protecting;
+            var protectedCard = await Task.Run(
+                () => _nfcCardWriter.ProtectWithPassword(card.ReaderName, card.CardType, config, password, CreateNfcWriteProgress()));
+
+            if (protectedCard)
+            {
+                WriteStatusText.Text = Strings.LS_Nfc_ProtectSuccess(card.Uid);
+                _logger.Information("Cartão NFC UID {Uid} protegido com palavra-passe.", card.Uid);
+                _pendingNfcProtectConfig = null;
+            }
+            else
+            {
+                WriteStatusText.Text = Strings.LS_Nfc_ProtectFailed;
+                SetProtectCheckboxChecked(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Falha ao proteger o cartão NFC UID {Uid}.", card.Uid);
+            WriteStatusText.Text = Strings.LS_Nfc_ProtectFailed;
+            SetProtectCheckboxChecked(false);
+        }
+        finally
+        {
+            SetNfcOperationInProgress(false);
+        }
+    }
+
+    private void SetProtectCheckboxChecked(bool value)
+    {
+        _settingProtectCheckboxProgrammatically = true;
+        ProtectCardCheckBox.IsChecked = value;
+        _settingProtectCheckboxProgrammatically = false;
+    }
+
+    private void ResetProtectCardPanel()
+    {
+        _pendingNfcProtectConfig = null;
+        ProtectCardPanel.Visibility = Visibility.Collapsed;
+        SetProtectCheckboxChecked(false);
+    }
+
     /// <summary>Impede cliques repetidos enquanto uma operação NFC está em curso — duas escritas em simultâneo colidiriam na mesma porta.</summary>
     private void SetNfcOperationInProgress(bool inProgress)
     {
         WriteButton.IsEnabled = !inProgress;
         FormatCardButton.IsEnabled = !inProgress;
         RefreshNfcReaderButton.IsEnabled = !inProgress;
+
+        var hasPassword = !string.IsNullOrWhiteSpace(new AgentSettingsStore().Load().NfcCardPassword);
+        ProtectCardCheckBox.IsEnabled = !inProgress && _pendingNfcProtectConfig is not null && hasPassword;
     }
+
+    private void ClearNfcBlockLog()
+    {
+        NfcBlockLogBox.Clear();
+        NfcBlockLogPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Mostra "bloco X de Y" no estado e acrescenta uma linha ao registo de blocos com o conteúdo exato gravado.</summary>
+    private Progress<NfcCardWriteProgress> CreateNfcWriteProgress() =>
+        new(p =>
+        {
+            WriteStatusText.Text = Strings.LS_Nfc_WriteProgress(p.Current, p.Total);
+            var hex = string.Join(' ', p.Data.Select(b => b.ToString("X2")));
+            NfcBlockLogBox.AppendText($"[{p.Current,3}/{p.Total,-3}] setor {p.Sector,2} bloco {p.AbsoluteBlock,3}: {hex}{Environment.NewLine}");
+            NfcBlockLogBox.ScrollToEnd();
+        });
 
     private void OnPrintLabelClicked(object sender, RoutedEventArgs e)
     {

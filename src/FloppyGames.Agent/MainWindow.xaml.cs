@@ -115,7 +115,11 @@ public partial class MainWindow : Window
 
             var nfcWatcher = new PollingNfcCardWatcher(backend.ReaderDetector, backend.CardPresenceProbe, _logger);
             var nfcReader = new NfcCardConfigReader(backend.CardGateway);
-            _nfcMediaService = new NfcGameMediaService(nfcWatcher, nfcReader, _logger);
+            var nfcCardPassword = _settingsStore.Load().NfcCardPassword;
+            IReadOnlyList<byte[]> extraKeys = string.IsNullOrWhiteSpace(nfcCardPassword)
+                ? Array.Empty<byte[]>()
+                : [NfcCardPasswordKey.Derive(nfcCardPassword)];
+            _nfcMediaService = new NfcGameMediaService(nfcWatcher, nfcReader, _logger, extraKeys);
             _nfcMediaService.CardInserted += OnCardInserted;
             _nfcMediaService.CardRemoved += OnCardRemoved;
             _nfcMediaService.InvalidCardDetected += OnInvalidCardDetected;

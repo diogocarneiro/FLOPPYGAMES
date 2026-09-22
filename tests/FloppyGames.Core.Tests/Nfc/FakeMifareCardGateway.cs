@@ -6,6 +6,7 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 {
     private readonly Dictionary<int, byte[]> _blocks = new();
     private readonly HashSet<int> _sectorsRequiringAuthFailure = new();
+    private readonly Dictionary<int, byte[]> _requiredKeyBySector = new();
 
     public List<int> AuthenticatedSectors { get; } = new();
 
@@ -23,6 +24,9 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 
     public void FailAuthenticationForSector(int sector) => _sectorsRequiringAuthFailure.Add(sector);
 
+    /// <summary>Simula um setor "protegido" (chave de fábrica já não autentica) — só uma chave específica funciona.</summary>
+    public void RequireKeyForSector(int sector, byte[] key) => _requiredKeyBySector[sector] = key;
+
     /// <summary>Grava o conteúdo tal como <see cref="NfcCardConfigWriter.Write"/> faria, sem passar pela interface — útil para preparar cenários de leitura.</summary>
     public void SeedCardContent(string iniText, MifareCardType cardType)
     {
@@ -37,6 +41,11 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
     public bool Authenticate(string readerName, int sector, byte[] keyA)
     {
         if (_sectorsRequiringAuthFailure.Contains(sector))
+        {
+            return false;
+        }
+
+        if (_requiredKeyBySector.TryGetValue(sector, out var requiredKey) && !requiredKey.SequenceEqual(keyA))
         {
             return false;
         }

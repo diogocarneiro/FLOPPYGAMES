@@ -78,6 +78,10 @@
   <data name="Settings_NfcDescription" xml:space="preserve"><value>Experimental feature: requires a physical PC/SC reader (e.g. ACR122U) and Mifare Classic cards. Never tested against real hardware — only enable this if you have one. Restart the app to apply this change.</value></data>
   <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>NFC detection enabled.</value></data>
   <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>NFC detection disabled.</value></data>
+  <data name="Settings_NfcCardPasswordLabel" xml:space="preserve"><value>NFC card protection password (optional)</value></data>
+  <data name="Settings_NfcCardPasswordDescription" xml:space="preserve"><value>Used to optionally protect NFC cards against reading/writing by other programs, after the game has been written. The Agent needs the same password to read protected cards again later, so it's stored here, shared between Label Studio and the Agent.</value></data>
+  <data name="Settings_NfcCardPasswordSaved" xml:space="preserve"><value>NFC protection password saved.</value></data>
+  <data name="Settings_NfcCardPasswordRemoved" xml:space="preserve"><value>NFC protection password removed.</value></data>
   <data name="Settings_AboutLabel" xml:space="preserve"><value>About</value></data>
   <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames turns a physical 3.5" floppy disk (or a USB drive) into a launch key for your Steam, Epic Games or GOG library. Insert the media prepared with Label Studio: the game starts automatically. Remove it: the game closes.</value></data>
   <data name="Settings_AboutCreatedBy" xml:space="preserve"><value>Created by Diogo Carneiro</value></data>
@@ -159,6 +163,12 @@
   <data name="LS_Nfc_FormatFailed" xml:space="preserve"><value>Format failed — this card is probably not a "magic" clone.</value></data>
   <data name="LS_Nfc_Checking" xml:space="preserve"><value>Checking card...</value></data>
   <data name="LS_Nfc_WriteProgress" xml:space="preserve"><value>Writing block {0} of {1}...</value></data>
+  <data name="LS_Nfc_ProtectCheckbox" xml:space="preserve"><value>Protect this card with the configured password</value></data>
+  <data name="LS_Nfc_ProtectNoPasswordHint" xml:space="preserve"><value>Set a password in Settings → NFC card protection password to be able to protect cards.</value></data>
+  <data name="LS_Nfc_ProtectConfirm" xml:space="preserve"><value>This replaces the key of the sector(s) used with one derived from the configured password. The card can still be rewritten later by anyone who knows that password, but it will no longer respond to the factory key. Continue?</value></data>
+  <data name="LS_Nfc_Protecting" xml:space="preserve"><value>Protecting card...</value></data>
+  <data name="LS_Nfc_ProtectSuccess" xml:space="preserve"><value>Card {0} protected successfully.</value></data>
+  <data name="LS_Nfc_ProtectFailed" xml:space="preserve"><value>Failed to protect the card.</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Print...</value></data>

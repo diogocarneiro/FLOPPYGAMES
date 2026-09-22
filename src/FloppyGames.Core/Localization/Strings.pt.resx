@@ -78,6 +78,10 @@
   <data name="Settings_NfcDescription" xml:space="preserve"><value>Funcionalidade experimental: precisa de um leitor PC/SC físico (ex. ACR122U) e cartões Mifare Classic. Nunca foi testada com hardware real — só ativar se tiveres um leitor. Reinicia a aplicação para aplicar esta alteração.</value></data>
   <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>Deteção NFC ativada.</value></data>
   <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>Deteção NFC desativada.</value></data>
+  <data name="Settings_NfcCardPasswordLabel" xml:space="preserve"><value>Palavra-passe de proteção dos cartões NFC (opcional)</value></data>
+  <data name="Settings_NfcCardPasswordDescription" xml:space="preserve"><value>Usada para proteger, opcionalmente, cartões NFC contra leitura/escrita por outros programas, depois de o jogo já estar gravado. O Agent precisa da mesma palavra-passe para voltar a ler cartões protegidos mais tarde, por isso fica guardada aqui, partilhada entre o Label Studio e o Agent.</value></data>
+  <data name="Settings_NfcCardPasswordSaved" xml:space="preserve"><value>Palavra-passe de proteção NFC guardada.</value></data>
+  <data name="Settings_NfcCardPasswordRemoved" xml:space="preserve"><value>Palavra-passe de proteção NFC removida.</value></data>
   <data name="Settings_AboutLabel" xml:space="preserve"><value>Sobre</value></data>
   <data name="Settings_AboutDescription" xml:space="preserve"><value>O FloppyGames transforma uma disquete física de 3.5" (ou uma pen USB) numa chave de lançamento para a tua biblioteca Steam, Epic Games ou GOG. Insere o suporte preparado com o Label Studio: o jogo arranca automaticamente. Remove-o: o jogo fecha-se.</value></data>
   <data name="Settings_AboutCreatedBy" xml:space="preserve"><value>Criado por Diogo Carneiro</value></data>
@@ -159,6 +163,12 @@
   <data name="LS_Nfc_FormatFailed" xml:space="preserve"><value>Falha ao formatar — este cartão provavelmente não é um clone "magic".</value></data>
   <data name="LS_Nfc_Checking" xml:space="preserve"><value>A verificar o cartão...</value></data>
   <data name="LS_Nfc_WriteProgress" xml:space="preserve"><value>A gravar o bloco {0} de {1}...</value></data>
+  <data name="LS_Nfc_ProtectCheckbox" xml:space="preserve"><value>Proteger este cartão com a palavra-passe configurada</value></data>
+  <data name="LS_Nfc_ProtectNoPasswordHint" xml:space="preserve"><value>Configura uma palavra-passe em Definições → Palavra-passe de proteção dos cartões NFC para poderes proteger cartões.</value></data>
+  <data name="LS_Nfc_ProtectConfirm" xml:space="preserve"><value>Isto troca a chave do(s) setor(es) usados pela derivada da palavra-passe configurada. O cartão continua a poder ser reescrito mais tarde por quem souber essa palavra-passe, mas deixa de responder à chave de fábrica. Continuar?</value></data>
+  <data name="LS_Nfc_Protecting" xml:space="preserve"><value>A proteger o cartão...</value></data>
+  <data name="LS_Nfc_ProtectSuccess" xml:space="preserve"><value>Cartão {0} protegido com sucesso.</value></data>
+  <data name="LS_Nfc_ProtectFailed" xml:space="preserve"><value>Falha ao proteger o cartão.</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimir...</value></data>

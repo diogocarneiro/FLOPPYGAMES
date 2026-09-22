@@ -71,4 +71,24 @@ public class MifareCardLayoutTests
     {
         Assert.Equal(0, MifareCardLayout.UsableCapacityBytes(MifareCardType.Unknown));
     }
+
+    [Theory]
+    [InlineData(0, 3)]
+    [InlineData(1, 7)]
+    [InlineData(31, 127)]
+    [InlineData(32, 143)]
+    [InlineData(39, 255)]
+    public void TrailerAbsoluteBlock_ReturnsLastBlockOfSector(int sector, int expectedAbsoluteBlock)
+    {
+        Assert.Equal(expectedAbsoluteBlock, MifareCardLayout.TrailerAbsoluteBlock(sector));
+    }
+
+    [Fact]
+    public void TrailerAbsoluteBlock_NeverMatchesAnyUsableDataBlock()
+    {
+        var blocks = MifareCardLayout.UsableDataBlocks(MifareCardType.Classic4K);
+        var trailers = Enumerable.Range(0, 40).Select(MifareCardLayout.TrailerAbsoluteBlock).ToHashSet();
+
+        Assert.DoesNotContain(blocks, b => trailers.Contains(b.AbsoluteBlock));
+    }
 }

@@ -14,7 +14,12 @@ public sealed class NfcCardConfigReader
 
     public NfcCardConfigReader(IMifareCardGateway gateway) => _gateway = gateway;
 
-    public NfcCardScanResult Read(string readerName, string uid, MifareCardType cardType)
+    /// <param name="extraKeys">
+    /// Chaves extra a tentar depois da chave de fábrica (ex.: derivada de uma password de
+    /// proteção configurada nas Definições, ver <see cref="NfcCardPasswordKey"/>) — sem isto, um
+    /// cartão protegido deixaria de ser reconhecido ao ser aproximado do leitor.
+    /// </param>
+    public NfcCardScanResult Read(string readerName, string uid, MifareCardType cardType, IReadOnlyList<byte[]>? extraKeys = null)
     {
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
         if (layout.Count == 0)
@@ -22,12 +27,13 @@ public sealed class NfcCardConfigReader
             return NfcCardScanResult.UnsupportedCardType(uid);
         }
 
+        var keysToTry = MifareKeys.CandidatesWith(extraKeys);
         var authenticatedSectors = new HashSet<int>();
         byte[] firstBlockData;
 
         try
         {
-            if (!TryAuthenticateAndRead(readerName, layout[0], authenticatedSectors, out firstBlockData))
+            if (!TryAuthenticateAndRead(readerName, layout[0], authenticatedSectors, keysToTry, out firstBlockData))
             {
                 return NfcCardScanResult.AuthenticationFailed(uid, layout[0].Sector);
             }
@@ -54,7 +60,7 @@ public sealed class NfcCardConfigReader
         {
             for (var i = 1; i < neededBlockCount; i++)
             {
-                if (!TryAuthenticateAndRead(readerName, layout[i], authenticatedSectors, out var data))
+                if (!TryAuthenticateAndRead(readerName, layout[i], authenticatedSectors, keysToTry, out var data))
                 {
                     return NfcCardScanResult.AuthenticationFailed(uid, layout[i].Sector);
                 }
@@ -80,11 +86,11 @@ public sealed class NfcCardConfigReader
     }
 
     private bool TryAuthenticateAndRead(
-        string readerName, MifareBlockAddress block, HashSet<int> authenticatedSectors, out byte[] data)
+        string readerName, MifareBlockAddress block, HashSet<int> authenticatedSectors, IReadOnlyList<byte[]> keysToTry, out byte[] data)
     {
         if (!authenticatedSectors.Contains(block.Sector))
         {
-            if (!_gateway.Authenticate(readerName, block.Sector, MifareKeys.FactoryDefaultKeyA))
+            if (!keysToTry.Any(key => _gateway.Authenticate(readerName, block.Sector, key)))
             {
                 data = [];
                 return false;

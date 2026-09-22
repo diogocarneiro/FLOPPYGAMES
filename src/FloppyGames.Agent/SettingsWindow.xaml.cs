@@ -28,6 +28,9 @@ public partial class SettingsWindow : Window
         PlatformsDescriptionText.Text = Strings.Settings_PlatformsDescription;
         NfcEnabledCheckBox.Content = Strings.Settings_NfcEnabled;
         NfcDescriptionText.Text = Strings.Settings_NfcDescription;
+        NfcCardPasswordLabelText.Text = Strings.Settings_NfcCardPasswordLabel;
+        NfcCardPasswordDescriptionText.Text = Strings.Settings_NfcCardPasswordDescription;
+        SaveNfcCardPasswordButton.Content = Strings.Settings_SaveButton;
         AboutLabelText.Text = Strings.Settings_AboutLabel;
         AboutDescriptionText.Text = Strings.Settings_AboutDescription;
         AboutCreatedByText.Text = Strings.Settings_AboutCreatedBy;
@@ -45,6 +48,7 @@ public partial class SettingsWindow : Window
         LogsPathText.Text = LoggingBootstrapper.LogDirectory;
         var settings = _settingsStore.Load();
         SteamWebApiKeyBox.Text = settings.SteamWebApiKey ?? string.Empty;
+        NfcCardPasswordBox.Password = settings.NfcCardPassword ?? string.Empty;
 
         LanguageCombo.ItemsSource = SupportedLanguages.All;
         LanguageCombo.DisplayMemberPath = "NativeName";
@@ -95,6 +99,16 @@ public partial class SettingsWindow : Window
         StatusText.Text = string.IsNullOrWhiteSpace(apiKey)
             ? Strings.Settings_ApiKeyRemoved
             : Strings.Settings_ApiKeySaved;
+    }
+
+    private void OnSaveNfcCardPasswordClicked(object sender, RoutedEventArgs e)
+    {
+        var password = NfcCardPasswordBox.Password.Trim();
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { NfcCardPassword = string.IsNullOrWhiteSpace(password) ? null : password });
+        StatusText.Text = string.IsNullOrWhiteSpace(password)
+            ? Strings.Settings_NfcCardPasswordRemoved
+            : Strings.Settings_NfcCardPasswordSaved;
     }
 
     private void OnFloppySoundToggled(object sender, RoutedEventArgs e)

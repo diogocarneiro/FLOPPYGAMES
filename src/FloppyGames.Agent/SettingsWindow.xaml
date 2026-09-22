@@ -33,7 +33,13 @@
 
         <CheckBox x:Name="NfcEnabledCheckBox"
                   Checked="OnNfcEnabledToggled" Unchecked="OnNfcEnabledToggled" Margin="0,0,0,4" />
-        <TextBlock x:Name="NfcDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,20" />
+        <TextBlock x:Name="NfcDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <TextBlock x:Name="NfcCardPasswordLabelText" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock x:Name="NfcCardPasswordDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <DockPanel Margin="0,0,0,20">
+            <Button x:Name="SaveNfcCardPasswordButton" DockPanel.Dock="Right" Width="70" Click="OnSaveNfcCardPasswordClicked" />
+            <PasswordBox x:Name="NfcCardPasswordBox" Margin="0,0,8,0" />
+        </DockPanel>
 
         <TextBlock x:Name="LogsFolderLabelText" FontWeight="Bold" Margin="0,0,0,4" />
         <DockPanel Margin="0,0,0,20">

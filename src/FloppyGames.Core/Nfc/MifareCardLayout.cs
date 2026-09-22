@@ -44,6 +44,16 @@ public static class MifareCardLayout
 
     public static int UsableCapacityBytes(MifareCardType cardType) => UsableDataBlocks(cardType).Count * BlockSizeBytes;
 
+    /// <summary>
+    /// O bloco trailer (chaves + bits de acesso) de um setor — usado só pela proteção por
+    /// password (<see cref="NfcCardConfigWriter.ProtectWithPassword"/>), a única operação que
+    /// escreve deliberadamente num trailer; todo o resto do código evita estes blocos (ver
+    /// <see cref="UsableDataBlocks"/>).
+    /// </summary>
+    public static int TrailerAbsoluteBlock(int sector) => sector < SmallSectorCount
+        ? (sector * SmallSectorBlockCount) + (SmallSectorBlockCount - 1)
+        : (SmallSectorCount * SmallSectorBlockCount) + ((sector - SmallSectorCount) * LargeSectorBlockCount) + (LargeSectorBlockCount - 1);
+
     private static int SectorCount(MifareCardType cardType) => cardType switch
     {
         MifareCardType.Classic1K => 16,

@@ -102,6 +102,35 @@ public class NfcCardConfigReaderTests
     }
 
     [Fact]
+    public void Read_SectorProtectedByPasswordKey_FactoryKeyOnly_ReturnsAuthenticationFailed()
+    {
+        var gateway = new FakeMifareCardGateway();
+        gateway.SeedCardContent(ValidIni, MifareCardType.Classic1K);
+        var passwordKey = NfcCardPasswordKey.Derive("hunter2");
+        gateway.RequireKeyForSector(0, passwordKey);
+        var reader = new NfcCardConfigReader(gateway);
+
+        var result = reader.Read(Reader, Uid, MifareCardType.Classic1K);
+
+        Assert.Equal(NfcCardScanStatus.AuthenticationFailed, result.Status);
+    }
+
+    [Fact]
+    public void Read_SectorProtectedByPasswordKey_ExtraKeyProvided_ReturnsValid()
+    {
+        var gateway = new FakeMifareCardGateway();
+        gateway.SeedCardContent(ValidIni, MifareCardType.Classic1K);
+        var passwordKey = NfcCardPasswordKey.Derive("hunter2");
+        gateway.RequireKeyForSector(0, passwordKey);
+        var reader = new NfcCardConfigReader(gateway);
+
+        var result = reader.Read(Reader, Uid, MifareCardType.Classic1K, [passwordKey]);
+
+        Assert.Equal(NfcCardScanStatus.Valid, result.Status);
+        Assert.Equal("Portal", result.Config!.Title);
+    }
+
+    [Fact]
     public void Read_MultiBlockContent_AuthenticatesEachSectorOnlyOnce()
     {
         var gateway = new FakeMifareCardGateway();

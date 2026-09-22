@@ -14,14 +14,20 @@ public sealed class NfcGameMediaService : IDisposable
     private readonly INfcCardWatcher _watcher;
     private readonly NfcCardConfigReader _reader;
     private readonly ILogger _logger;
+    private readonly IReadOnlyList<byte[]> _extraKeys;
     private readonly Dictionary<string, GameConfig> _activeCards = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _stateLock = new();
 
-    public NfcGameMediaService(INfcCardWatcher watcher, NfcCardConfigReader reader, ILogger logger)
+    /// <param name="extraKeys">
+    /// Chaves extra a tentar depois da de fábrica (ex.: derivada de <see cref="FloppyGames.Core.Settings.AgentSettings.NfcCardPassword"/>)
+    /// — sem isto, um cartão protegido por password deixaria de ser reconhecido pelo Agent.
+    /// </param>
+    public NfcGameMediaService(INfcCardWatcher watcher, NfcCardConfigReader reader, ILogger logger, IReadOnlyList<byte[]>? extraKeys = null)
     {
         _watcher = watcher;
         _reader = reader;
         _logger = logger.ForContext<NfcGameMediaService>();
+        _extraKeys = extraKeys ?? [];
 
         _watcher.CardArrived += OnCardArrived;
         _watcher.CardRemoved += OnCardRemoved;
@@ -46,7 +52,7 @@ public sealed class NfcGameMediaService : IDisposable
                 return;
             }
 
-            var result = _reader.Read(presence.ReaderName, presence.Uid, presence.CardType);
+            var result = _reader.Read(presence.ReaderName, presence.Uid, presence.CardType, _extraKeys);
 
             switch (result.Status)
             {

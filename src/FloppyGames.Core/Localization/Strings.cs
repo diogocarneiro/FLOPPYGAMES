@@ -85,6 +85,10 @@ public static class Strings
     public static string Settings_NfcDescription => Get("Settings_NfcDescription");
     public static string Settings_NfcEnabledOn => Get("Settings_NfcEnabledOn");
     public static string Settings_NfcEnabledOff => Get("Settings_NfcEnabledOff");
+    public static string Settings_NfcCardPasswordLabel => Get("Settings_NfcCardPasswordLabel");
+    public static string Settings_NfcCardPasswordDescription => Get("Settings_NfcCardPasswordDescription");
+    public static string Settings_NfcCardPasswordSaved => Get("Settings_NfcCardPasswordSaved");
+    public static string Settings_NfcCardPasswordRemoved => Get("Settings_NfcCardPasswordRemoved");
     public static string Settings_AboutLabel => Get("Settings_AboutLabel");
     public static string Settings_AboutDescription => Get("Settings_AboutDescription");
     public static string Settings_AboutCreatedBy => Get("Settings_AboutCreatedBy");
@@ -166,6 +170,12 @@ public static class Strings
     public static string LS_Nfc_FormatFailed => Get("LS_Nfc_FormatFailed");
     public static string LS_Nfc_Checking => Get("LS_Nfc_Checking");
     public static string LS_Nfc_WriteProgress(int current, int total) => Format("LS_Nfc_WriteProgress", current, total);
+    public static string LS_Nfc_ProtectCheckbox => Get("LS_Nfc_ProtectCheckbox");
+    public static string LS_Nfc_ProtectNoPasswordHint => Get("LS_Nfc_ProtectNoPasswordHint");
+    public static string LS_Nfc_ProtectConfirm => Get("LS_Nfc_ProtectConfirm");
+    public static string LS_Nfc_Protecting => Get("LS_Nfc_Protecting");
+    public static string LS_Nfc_ProtectSuccess(string uid) => Format("LS_Nfc_ProtectSuccess", uid);
+    public static string LS_Nfc_ProtectFailed => Get("LS_Nfc_ProtectFailed");
 
     // LabelPrintWindow
     public static string LPW_PrintButton => Get("LPW_PrintButton");

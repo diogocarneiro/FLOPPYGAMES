@@ -15,7 +15,8 @@ public sealed class NfcCardConfigWriter
 
     public NfcCardConfigWriter(IMifareCardGateway gateway) => _gateway = gateway;
 
-    public NfcCardWriteCheck Check(string readerName, MifareCardType cardType, GameConfig config)
+    /// <param name="extraKeys">Chaves extra a tentar depois da de fábrica — ver <see cref="NfcCardConfigReader.Read"/>.</param>
+    public NfcCardWriteCheck Check(string readerName, MifareCardType cardType, GameConfig config, IReadOnlyList<byte[]>? extraKeys = null)
     {
         if (cardType == MifareCardType.Unknown)
         {
@@ -33,10 +34,11 @@ public sealed class NfcCardConfigWriter
 
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
         var firstBlock = layout[0];
+        var keysToTry = MifareKeys.CandidatesWith(extraKeys);
 
         try
         {
-            if (!_gateway.Authenticate(readerName, firstBlock.Sector, MifareKeys.FactoryDefaultKeyA))
+            if (!keysToTry.Any(key => _gateway.Authenticate(readerName, firstBlock.Sector, key)))
             {
                 return NfcCardWriteCheck.AuthenticationFailed(Strings.Core_Nfc_AuthenticationFailed(firstBlock.Sector));
             }
@@ -62,11 +64,14 @@ public sealed class NfcCardConfigWriter
     /// é sempre potencialmente lenta e NUNCA deve correr na thread de UI; <paramref name="progress"/>
     /// existe precisamente para a UI poder mostrar "bloco X de Y" enquanto espera numa thread à parte.
     /// </summary>
-    public void Write(string readerName, MifareCardType cardType, GameConfig config, IProgress<(int Current, int Total)>? progress = null)
+    public void Write(
+        string readerName, MifareCardType cardType, GameConfig config,
+        IProgress<NfcCardWriteProgress>? progress = null, IReadOnlyList<byte[]>? extraKeys = null)
     {
         var iniText = GameIniWriter.Write(config);
         var blocks = MifareConfigCodec.Encode(iniText, cardType);
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
+        var keysToTry = MifareKeys.CandidatesWith(extraKeys);
 
         var authenticatedSectors = new HashSet<int>();
         for (var i = 0; i < blocks.Length; i++)
@@ -74,7 +79,7 @@ public sealed class NfcCardConfigWriter
             var block = layout[i];
             if (!authenticatedSectors.Contains(block.Sector))
             {
-                if (!_gateway.Authenticate(readerName, block.Sector, MifareKeys.FactoryDefaultKeyA))
+                if (!keysToTry.Any(key => _gateway.Authenticate(readerName, block.Sector, key)))
                 {
                     throw new InvalidOperationException($"Falha de autenticação no setor {block.Sector} ao gravar.");
                 }
@@ -83,7 +88,7 @@ public sealed class NfcCardConfigWriter
             }
 
             _gateway.WriteBlock(readerName, block.AbsoluteBlock, blocks[i]);
-            progress?.Report((i + 1, blocks.Length));
+            progress?.Report(new NfcCardWriteProgress(i + 1, blocks.Length, block.Sector, block.AbsoluteBlock, blocks[i]));
         }
     }
 
@@ -96,7 +101,7 @@ public sealed class NfcCardConfigWriter
     /// Devolve <c>false</c> ao primeiro bloco que falhar — nesse caso o cartão pode ter ficado
     /// parcialmente escrito, tal como aconteceria ao formatar qualquer cartão a meio.
     /// </summary>
-    public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config, IProgress<(int Current, int Total)>? progress = null)
+    public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config, IProgress<NfcCardWriteProgress>? progress = null)
     {
         var iniText = GameIniWriter.Write(config);
         var blocks = MifareConfigCodec.Encode(iniText, cardType);
@@ -104,16 +109,60 @@ public sealed class NfcCardConfigWriter
 
         for (var i = 0; i < blocks.Length; i++)
         {
-            if (!_gateway.TryMagicWriteBlock(readerName, layout[i].AbsoluteBlock, blocks[i]))
+            var block = layout[i];
+            if (!_gateway.TryMagicWriteBlock(readerName, block.AbsoluteBlock, blocks[i]))
             {
                 return false;
             }
 
-            progress?.Report((i + 1, blocks.Length));
+            progress?.Report(new NfcCardWriteProgress(i + 1, blocks.Length, block.Sector, block.AbsoluteBlock, blocks[i]));
         }
 
         return true;
     }
+
+    /// <summary>
+    /// Troca a chave de fábrica pela chave derivada de <paramref name="password"/> (ver
+    /// <see cref="NfcCardPasswordKey"/>) nos trailers dos setores usados pela configuração
+    /// gravada — os bits de acesso e o byte de utilizador ficam exatamente os de fábrica
+    /// (<c>FF 07 80 69</c>), só a chave muda, para que o cartão continue reescrevível mais tarde
+    /// por quem souber a password. Autentica cada setor com a chave de fábrica antes de reescrever
+    /// o respetivo trailer — por isso só funciona logo a seguir a um <see cref="Write"/> bem
+    /// sucedido, antes de qualquer outra proteção ser aplicada. Ação explicitamente opt-in por
+    /// cartão: nunca deve ser chamada automaticamente no fim de uma gravação normal. Devolve
+    /// <c>false</c> ao primeiro setor que falhar a autenticar — o cartão pode ficar com alguns
+    /// setores protegidos e outros não, tal como uma gravação normal interrompida a meio.
+    /// </summary>
+    public bool ProtectWithPassword(
+        string readerName, MifareCardType cardType, GameConfig config, string password,
+        IProgress<NfcCardWriteProgress>? progress = null)
+    {
+        var key = NfcCardPasswordKey.Derive(password);
+        var trailerData = BuildTrailerBlock(key);
+
+        var iniText = GameIniWriter.Write(config);
+        var blocks = MifareConfigCodec.Encode(iniText, cardType);
+        var layout = MifareCardLayout.UsableDataBlocks(cardType);
+        var sectors = layout.Take(blocks.Length).Select(b => b.Sector).Distinct().ToArray();
+
+        for (var i = 0; i < sectors.Length; i++)
+        {
+            var sector = sectors[i];
+            if (!_gateway.Authenticate(readerName, sector, MifareKeys.FactoryDefaultKeyA))
+            {
+                return false;
+            }
+
+            var trailerBlock = MifareCardLayout.TrailerAbsoluteBlock(sector);
+            _gateway.WriteBlock(readerName, trailerBlock, trailerData);
+            progress?.Report(new NfcCardWriteProgress(i + 1, sectors.Length, sector, trailerBlock, trailerData));
+        }
+
+        return true;
+    }
+
+    /// <summary>Key A + bits de acesso de transporte de fábrica (<c>FF 07 80</c>) + byte de utilizador (<c>69</c>) + Key B — só a chave muda em relação a um trailer de fábrica.</summary>
+    private static byte[] BuildTrailerBlock(byte[] key) => [.. key, 0xFF, 0x07, 0x80, 0x69, .. key];
 
     private static string FormatBytes(long bytes) => bytes switch
     {
