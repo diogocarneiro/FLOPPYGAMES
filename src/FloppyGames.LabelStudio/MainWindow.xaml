@@ -96,7 +96,7 @@
                 <TextBlock x:Name="Step4Header" Style="{StaticResource StepHeader}" />
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <RadioButton x:Name="TargetTypeDriveRadio" GroupName="TargetType" IsChecked="True"
+                    <RadioButton x:Name="TargetTypeDriveRadio" GroupName="TargetType"
                                  Margin="0,0,20,0" Checked="OnTargetTypeChanged" />
                     <RadioButton x:Name="TargetTypeNfcRadio" GroupName="TargetType" Checked="OnTargetTypeChanged" />
                 </StackPanel>

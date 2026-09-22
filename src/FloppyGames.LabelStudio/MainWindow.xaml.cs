@@ -64,6 +64,11 @@ public partial class MainWindow : Window
 
         Closed += OnMainWindowClosed;
 
+        // Definido em código (não no XAML) pela mesma razão do PlatformCombo.SelectedIndex abaixo:
+        // um IsChecked="True" no XAML dispara o Checked durante o InitializeComponent(), antes dos
+        // campos _nfc* acima estarem atribuídos, e o handler batia num NullReferenceException.
+        TargetTypeDriveRadio.IsChecked = true;
+
         RefreshDrives();
 
         // Definido em código (não no XAML) para só disparar OnPlatformChanged depois dos scanners
