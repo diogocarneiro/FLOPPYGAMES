@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <None Include="Assets\floppy-motor.wav" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -15,6 +16,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <AssemblyTitle>FloppyGames Agent</AssemblyTitle>
+    <Description>Liga uma disquete física à tua biblioteca Steam/Epic/GOG: insere o suporte, o jogo arranca; remove-o, o jogo fecha-se.</Description>
   </PropertyGroup>
 
 </Project>

@@ -21,6 +21,7 @@ O suporte a **pen USB dedicada** existe como alternativa extra — útil para qu
 - [Roadmap](#roadmap)
 - [Contribuir](#contribuir)
 - [Licença](#licença)
+- [Autor](#autor)
 
 ## Visão Geral
 
@@ -316,3 +317,9 @@ Este é um projeto pessoal orientado a hobby/nostalgia. Sugestões e *pull reque
 ## Licença
 
 Distribuído sob licença MIT — ver [LICENSE.md](LICENSE.md).
+
+## Autor
+
+Criado por [Diogo Carneiro](https://www.diogocarneiro.fr).
+
+© 2026 Diogo Carneiro. Tous droits réservés.

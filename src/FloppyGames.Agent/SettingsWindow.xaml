@@ -1,11 +1,13 @@
 <Window x:Class="FloppyGames.Agent.SettingsWindow"
+        Icon="Assets/AppIcon.ico"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Definições — FloppyGames"
-        Height="760" Width="460"
+        Height="640" Width="460"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         ShowInTaskbar="False">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
         <CheckBox x:Name="AutostartCheckBox"
                   Checked="OnAutostartToggled" Unchecked="OnAutostartToggled" Margin="0,0,0,20" />
@@ -51,6 +53,17 @@
             <Hyperlink x:Name="ApiKeyLink" NavigateUri="https://steamcommunity.com/dev/apikey" RequestNavigate="OnApiKeyLinkClicked" />
         </TextBlock>
 
-        <TextBlock x:Name="StatusText" Foreground="Gray" TextWrapping="Wrap" />
+        <TextBlock x:Name="StatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,20" />
+
+        <Rectangle Height="1" Fill="#FFDDDDDD" Margin="0,0,0,16" />
+
+        <TextBlock x:Name="AboutLabelText" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock x:Name="AboutDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <TextBlock x:Name="AboutCreatedByText" Margin="0,0,0,2" />
+        <TextBlock Margin="0,0,0,8">
+            <Hyperlink x:Name="AboutSiteLink" NavigateUri="https://www.diogocarneiro.fr" RequestNavigate="OnApiKeyLinkClicked">https://www.diogocarneiro.fr</Hyperlink>
+        </TextBlock>
+        <TextBlock Text="© 2026 Diogo Carneiro. Tous droits réservés." Foreground="Gray" FontSize="11" />
     </StackPanel>
+    </ScrollViewer>
 </Window>

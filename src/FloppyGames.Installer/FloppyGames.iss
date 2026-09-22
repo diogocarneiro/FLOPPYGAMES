@@ -5,6 +5,8 @@
 #define MyAppName "FloppyGames"
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "Diogo Carneiro"
+#define MyAppURL "https://www.diogocarneiro.fr"
+#define MyAppCopyright "© 2026 Diogo Carneiro. Tous droits réservés."
 #define AgentExeName "FloppyGames.Agent.exe"
 #define LabelStudioExeName "FloppyGames.LabelStudio.exe"
 
@@ -13,8 +15,15 @@ AppId={{BC2C9071-1DB5-4978-A7DB-4B3CA3E79F66}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-AppSupportURL=https://github.com/
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+AppCopyright={#MyAppCopyright}
+AppComments=Relie une disquette physique 3.5" à ta bibliothèque Steam/Epic/GOG : insère le support, le jeu démarre ; retire-le, le jeu se ferme.
 VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoCopyright={#MyAppCopyright}
+SetupIconFile=..\FloppyGames.Agent\Assets\AppIcon.ico
 ; Instala em {localappdata}, não em Program Files — não exige privilégios de administrador,
 ; consistente com o princípio de zero-admin do resto do projeto (ver ROADMAP.md).
 DefaultDirName={localappdata}\Programs\{#MyAppName}

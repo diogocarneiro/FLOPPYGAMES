@@ -78,6 +78,9 @@
   <data name="Settings_NfcDescription" xml:space="preserve"><value>Funcionalidade experimental: precisa de um leitor PC/SC físico (ex. ACR122U) e cartões Mifare Classic. Nunca foi testada com hardware real — só ativar se tiveres um leitor. Reinicia a aplicação para aplicar esta alteração.</value></data>
   <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>Deteção NFC ativada.</value></data>
   <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>Deteção NFC desativada.</value></data>
+  <data name="Settings_AboutLabel" xml:space="preserve"><value>Sobre</value></data>
+  <data name="Settings_AboutDescription" xml:space="preserve"><value>O FloppyGames transforma uma disquete física de 3.5" (ou uma pen USB) numa chave de lançamento para a tua biblioteca Steam, Epic Games ou GOG. Insere o suporte preparado com o Label Studio: o jogo arranca automaticamente. Remove-o: o jogo fecha-se.</value></data>
+  <data name="Settings_AboutCreatedBy" xml:space="preserve"><value>Criado por Diogo Carneiro</value></data>
 
   <!-- Tray icon -->
   <data name="Tray_OpenFloppyGames" xml:space="preserve"><value>Abrir FloppyGames</value></data>

@@ -28,6 +28,9 @@ public partial class SettingsWindow : Window
         PlatformsDescriptionText.Text = Strings.Settings_PlatformsDescription;
         NfcEnabledCheckBox.Content = Strings.Settings_NfcEnabled;
         NfcDescriptionText.Text = Strings.Settings_NfcDescription;
+        AboutLabelText.Text = Strings.Settings_AboutLabel;
+        AboutDescriptionText.Text = Strings.Settings_AboutDescription;
+        AboutCreatedByText.Text = Strings.Settings_AboutCreatedBy;
         LogsFolderLabelText.Text = Strings.Settings_LogsFolder;
         OpenLogsButton.Content = Strings.Settings_OpenButton;
         SteamApiKeyLabelText.Text = Strings.Settings_SteamApiKeyLabel;

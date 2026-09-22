@@ -85,6 +85,9 @@ public static class Strings
     public static string Settings_NfcDescription => Get("Settings_NfcDescription");
     public static string Settings_NfcEnabledOn => Get("Settings_NfcEnabledOn");
     public static string Settings_NfcEnabledOff => Get("Settings_NfcEnabledOff");
+    public static string Settings_AboutLabel => Get("Settings_AboutLabel");
+    public static string Settings_AboutDescription => Get("Settings_AboutDescription");
+    public static string Settings_AboutCreatedBy => Get("Settings_AboutCreatedBy");
 
     // Tray icon
     public static string Tray_OpenFloppyGames => Get("Tray_OpenFloppyGames");

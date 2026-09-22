@@ -7,6 +7,8 @@
     <Company>Diogo Carneiro</Company>
     <Product>FloppyGames</Product>
     <Authors>Diogo Carneiro</Authors>
+    <Copyright>© 2026 Diogo Carneiro. Tous droits réservés.</Copyright>
+    <PackageProjectUrl>https://www.diogocarneiro.fr</PackageProjectUrl>
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

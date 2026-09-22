@@ -10,6 +10,7 @@
     <None Include="..\..\catalog\**\*" LinkBase="Catalog">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -18,6 +19,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <AssemblyTitle>FloppyGames Label Studio</AssemblyTitle>
+    <Description>Cria as disquetes/pens/cartões NFC do FloppyGames: escolhe o jogo, gera o GAME.INI e grava no suporte.</Description>
   </PropertyGroup>
 
 </Project>
