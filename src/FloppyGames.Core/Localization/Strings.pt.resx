@@ -157,6 +157,8 @@
   <data name="LS_Nfc_FormatButton" xml:space="preserve"><value>Formatar cartão e escrever</value></data>
   <data name="LS_Nfc_FormatConfirm" xml:space="preserve"><value>Isto tenta escrever sem verificar as chaves atuais do cartão — só funciona em clones "magic" (Gen1a/Gen2), nunca num cartão Mifare Classic genuíno. O cartão pode ficar parcialmente escrito se falhar a meio. Continuar?</value></data>
   <data name="LS_Nfc_FormatFailed" xml:space="preserve"><value>Falha ao formatar — este cartão provavelmente não é um clone "magic".</value></data>
+  <data name="LS_Nfc_Checking" xml:space="preserve"><value>A verificar o cartão...</value></data>
+  <data name="LS_Nfc_WriteProgress" xml:space="preserve"><value>A gravar o bloco {0} de {1}...</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimir...</value></data>

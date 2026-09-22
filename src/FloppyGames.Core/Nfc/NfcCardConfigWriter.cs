@@ -55,8 +55,14 @@ public sealed class NfcCardConfigWriter
         return NfcCardWriteCheck.Ready();
     }
 
-    /// <summary>Escreve de facto no cartão. Chamar só depois de <see cref="Check"/> não devolver <c>Blocked</c>.</summary>
-    public void Write(string readerName, MifareCardType cardType, GameConfig config)
+    /// <summary>
+    /// Escreve de facto no cartão. Chamar só depois de <see cref="Check"/> não devolver
+    /// <c>Blocked</c>. Cada bloco é uma comunicação real com o hardware (pode demorar segundos,
+    /// sobretudo com o backend Proxmark3 e as suas tentativas automáticas) — por isso esta chamada
+    /// é sempre potencialmente lenta e NUNCA deve correr na thread de UI; <paramref name="progress"/>
+    /// existe precisamente para a UI poder mostrar "bloco X de Y" enquanto espera numa thread à parte.
+    /// </summary>
+    public void Write(string readerName, MifareCardType cardType, GameConfig config, IProgress<(int Current, int Total)>? progress = null)
     {
         var iniText = GameIniWriter.Write(config);
         var blocks = MifareConfigCodec.Encode(iniText, cardType);
@@ -77,6 +83,7 @@ public sealed class NfcCardConfigWriter
             }
 
             _gateway.WriteBlock(readerName, block.AbsoluteBlock, blocks[i]);
+            progress?.Report((i + 1, blocks.Length));
         }
     }
 
@@ -89,7 +96,7 @@ public sealed class NfcCardConfigWriter
     /// Devolve <c>false</c> ao primeiro bloco que falhar — nesse caso o cartão pode ter ficado
     /// parcialmente escrito, tal como aconteceria ao formatar qualquer cartão a meio.
     /// </summary>
-    public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config)
+    public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config, IProgress<(int Current, int Total)>? progress = null)
     {
         var iniText = GameIniWriter.Write(config);
         var blocks = MifareConfigCodec.Encode(iniText, cardType);
@@ -101,6 +108,8 @@ public sealed class NfcCardConfigWriter
             {
                 return false;
             }
+
+            progress?.Report((i + 1, blocks.Length));
         }
 
         return true;

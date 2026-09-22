@@ -96,6 +96,41 @@ public class NfcCardConfigWriterTests
     }
 
     [Fact]
+    public void Write_ReportsProgressForEveryBlock()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+        var reports = new List<(int Current, int Total)>();
+
+        // Progress<T> marshals via the captured SynchronizationContext (async, not synchronous) —
+        // a plain synchronous IProgress<T> avoids that indirection entirely for this assertion.
+        writer.Write(Reader, MifareCardType.Classic1K, Config, new SynchronousProgress<(int, int)>(reports.Add));
+
+        Assert.NotEmpty(reports);
+        Assert.Equal(gateway.WriteCalls.Count, reports.Count);
+        Assert.All(reports, r => Assert.Equal(reports[^1].Total, r.Total));
+        Assert.Equal(Enumerable.Range(1, reports.Count), reports.Select(r => r.Current));
+    }
+
+    [Fact]
+    public void WriteMagic_ReportsProgressForEveryBlock()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        var writer = new NfcCardConfigWriter(gateway);
+        var reports = new List<(int Current, int Total)>();
+
+        writer.WriteMagic(Reader, MifareCardType.Classic1K, Config, new SynchronousProgress<(int, int)>(reports.Add));
+
+        Assert.NotEmpty(reports);
+        Assert.Equal(gateway.MagicWriteCalls.Count, reports.Count);
+    }
+
+    private sealed class SynchronousProgress<T>(Action<T> onReport) : IProgress<T>
+    {
+        public void Report(T value) => onReport(value);
+    }
+
+    [Fact]
     public void Write_NeverTargetsTrailerOrManufacturerBlocks()
     {
         var gateway = new FakeMifareCardGateway();
