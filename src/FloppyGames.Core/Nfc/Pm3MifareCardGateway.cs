@@ -109,6 +109,17 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
             throw new ArgumentException("Um bloco Mifare Classic tem sempre 16 bytes.", nameof(data));
         }
 
+        // O backdoor mágico é o único caminho capaz de reescrever o bloco de fabrico (setor 0,
+        // bloco 0 — UID/BCC/SAK/ATQA do cartão); uma escrita normal autenticada nunca lá chega.
+        // O ID do cartão nunca deve mudar só por gravar o GAME.INI — por isso este bloco fica
+        // sempre de fora, mesmo que uma chamada futura (bug ou não) tente passá-lo aqui, e não só
+        // porque MifareCardLayout.UsableDataBlocks já o exclui do lado de quem chama.
+        if (absoluteBlock == 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(absoluteBlock), absoluteBlock, "O bloco de fabrico (UID) nunca pode ser escrito.");
+        }
+
         var dataHex = Convert.ToHexString(data);
 
         return WithRetries(() =>
