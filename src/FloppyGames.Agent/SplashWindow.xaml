@@ -49,7 +49,7 @@
         </Rectangle>
 
         <!-- Barra de destaque no topo -->
-        <Rectangle Height="3" VerticalAlignment="Top" Fill="#FF39FF6A" />
+        <Rectangle Height="20" VerticalAlignment="Top" Fill="#FF39FF6A" />
 
         <!-- Conteúdo -->
         <Grid Margin="72,60,72,48">
@@ -144,7 +144,7 @@
                         <ColumnDefinition Width="76" />
                     </Grid.ColumnDefinitions>
                     <Border x:Name="ProgressTrack" Grid.Column="0" Background="#FF1C1C24" CornerRadius="8" Height="16"
-                            ClipToBounds="True">
+                            ClipToBounds="True" Grid.ColumnSpan="2" Margin="0,1,45,1">
                         <Border x:Name="ProgressFill" Background="#FF39FF6A" CornerRadius="8" Width="0"
                                 HorizontalAlignment="Left" />
                     </Border>
@@ -156,9 +156,9 @@
         </Grid>
 
         <!-- Marca, discreta, no canto -->
-        <TextBlock Text="F L O P P Y G A M E S" FontFamily="Consolas" FontSize="12" FontWeight="Bold" Foreground="#FF4A4A54"
-                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="72,0,0,20" />
-        <TextBlock Text="© 2026 Diogo Carneiro. Tous droits réservés." FontFamily="Consolas" FontSize="12"
-                   Foreground="#FF4A4A54" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,72,20" />
+        <TextBlock Text="F L O P P Y G A M E S" FontFamily="Consolas" FontSize="16" Foreground="#FF4A4A54"
+                   HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="72,0,0,20" FontWeight="Bold" />
+        <TextBlock Text="© 2026 Diogo Carneiro. Tous droits réservés." FontFamily="Consolas" FontSize="14"
+                   Foreground="#FF4A4A54" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,72,20" FontWeight="Bold" />
     </Grid>
 </Window>

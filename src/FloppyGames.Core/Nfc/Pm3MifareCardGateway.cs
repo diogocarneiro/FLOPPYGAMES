@@ -4,20 +4,28 @@ namespace FloppyGames.Core.Nfc;
 
 /// <summary>
 /// Autentica e lê/escreve blocos de um cartão Mifare Classic através do cliente Proxmark3
-/// (<c>hf mf rdbl</c>/<c>hf mf wrbl</c>). Ao contrário do PC/SC, o Proxmark3 não tem uma sessão de
-/// autenticação persistente no dispositivo — cada comando `rdbl`/`wrbl` leva sempre a chave consigo.
-/// Por isso <see cref="Authenticate"/> aqui faz uma leitura real (ao primeiro bloco do setor) para
-/// confirmar a chave, e guarda-a em memória para os <see cref="ReadBlock"/>/<see cref="WriteBlock"/>
-/// seguintes reutilizarem no mesmo comando.
+/// (<c>hf mf rdbl</c>/<c>hf mf wrbl</c>/<c>hf mf csetblk</c>). Ao contrário do PC/SC, o Proxmark3
+/// não tem uma sessão de autenticação persistente no dispositivo — cada comando `rdbl`/`wrbl` leva
+/// sempre a chave consigo. Por isso <see cref="Authenticate"/> aqui faz uma leitura real (ao
+/// primeiro bloco do setor) para confirmar a chave, e guarda-a em memória para os
+/// <see cref="ReadBlock"/>/<see cref="WriteBlock"/> seguintes reutilizarem no mesmo comando.
 ///
-/// Verificado contra hardware real nesta sessão (Proxmark3 RDV4, firmware Iceman, cartão Mifare
-/// Classic 1K Gen1a): leitura e escrita de blocos confirmadas byte a byte.
+/// Verificado contra hardware real nesta sessão (Proxmark3 RDV4, firmware Iceman, cartões Mifare
+/// Classic 1K): leitura e escrita de blocos confirmadas byte a byte, incluindo pelo backdoor
+/// mágico Gen1a. Também verificado nesta sessão: o acoplamento RF entre a antena do Proxmark3 e o
+/// cartão é sensível ao posicionamento — a mesma operação, no mesmo cartão, falha por vezes e
+/// funciona logo a seguir sem qualquer mudança de código. Por isso cada operação tenta algumas
+/// vezes antes de desistir, em vez de reportar falha (ou, pior, ficar sem saber se algo foi
+/// escrito) à primeira tentativa falhada.
 /// </summary>
 public sealed class Pm3MifareCardGateway : IMifareCardGateway
 {
     private const int SmallSectorCount = 32;
     private const int SmallSectorBlockCount = 4;
     private const int LargeSectorBlockCount = 16;
+    private const int MaxAttempts = 3;
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(250);
+    private static readonly string[] FailureMarkers = ["[!!]", "Can't write block", "wupC1 error", "error="];
 
     private readonly string _pm3ExecutablePath;
     private readonly Dictionary<(string Reader, int Sector), string> _sectorKeys = new();
@@ -29,31 +37,41 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
         var keyHex = Convert.ToHexString(keyA);
         var firstBlock = AbsoluteFirstBlockOfSector(sector);
 
-        string output;
-        try
+        var ok = WithRetries(() =>
         {
-            output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, $"hf mf rdbl --blk {firstBlock} -k {keyHex}");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            string output;
+            try
+            {
+                output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, $"hf mf rdbl --blk {firstBlock} -k {keyHex}");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            {
+                return false;
+            }
+
+            return TryParseBlockLine(output, firstBlock, out _);
+        });
+
+        if (ok)
         {
-            return false;
+            _sectorKeys[(readerName, sector)] = keyHex;
         }
 
-        if (!TryParseBlockLine(output, firstBlock, out _))
-        {
-            return false;
-        }
-
-        _sectorKeys[(readerName, sector)] = keyHex;
-        return true;
+        return ok;
     }
 
     public byte[] ReadBlock(string readerName, int absoluteBlock)
     {
         var keyHex = RequireKey(readerName, absoluteBlock);
-        var output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, $"hf mf rdbl --blk {absoluteBlock} -k {keyHex}");
+        byte[] data = [];
 
-        if (!TryParseBlockLine(output, absoluteBlock, out var data))
+        var ok = WithRetries(() =>
+        {
+            var output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, $"hf mf rdbl --blk {absoluteBlock} -k {keyHex}");
+            return TryParseBlockLine(output, absoluteBlock, out data);
+        });
+
+        if (!ok)
         {
             throw new InvalidOperationException($"Falha ao ler o bloco {absoluteBlock} via Proxmark3 ({readerName}).");
         }
@@ -70,10 +88,15 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
 
         var keyHex = RequireKey(readerName, absoluteBlock);
         var dataHex = Convert.ToHexString(data);
-        var output = Pm3CommandRunner.Run(
-            _pm3ExecutablePath, readerName, $"hf mf wrbl --blk {absoluteBlock} -k {keyHex} -d {dataHex}");
 
-        if (!output.Contains("Write ( ok )", StringComparison.Ordinal))
+        var ok = WithRetries(() =>
+        {
+            var output = Pm3CommandRunner.Run(
+                _pm3ExecutablePath, readerName, $"hf mf wrbl --blk {absoluteBlock} -k {keyHex} -d {dataHex}");
+            return output.Contains("Write ( ok )", StringComparison.Ordinal);
+        });
+
+        if (!ok)
         {
             throw new InvalidOperationException($"Falha ao escrever o bloco {absoluteBlock} via Proxmark3 ({readerName}).");
         }
@@ -87,20 +110,54 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
         }
 
         var dataHex = Convert.ToHexString(data);
-        string output;
-        try
+
+        return WithRetries(() =>
         {
-            output = Pm3CommandRunner.Run(
-                _pm3ExecutablePath, readerName, $"hf mf csetblk --blk {absoluteBlock} -d {dataHex}");
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            string output;
+            try
+            {
+                output = Pm3CommandRunner.Run(
+                    _pm3ExecutablePath, readerName, $"hf mf csetblk --blk {absoluteBlock} -d {dataHex}");
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            {
+                return false;
+            }
+
+            // "hf mf csetblk" não tem uma linha de sucesso explícita — só imprime "Writing block
+            // number..." e, em caso de falha, uma ou mais linhas de erro. Verificado contra
+            // hardware real: uma falha de acoplamento RF (não é exclusivo de cartões não-Gen1a)
+            // dá "[#] wupC1 error" seguido de "[!!] Can't write block. error=-1" — por isso NUNCA
+            // basta confirmar a ausência de uma frase específica (uma falha diferente, ex. de
+            // ligação, passaria despercebida como sucesso). Exige as DUAS coisas: prova positiva
+            // de que o comando arrancou ("Writing block number") e ausência de qualquer marcador
+            // de erro do cliente (nível ERR é sempre prefixado com "[!!]").
+            return output.Contains("Writing block number", StringComparison.Ordinal)
+                && !FailureMarkers.Any(marker => output.Contains(marker, StringComparison.Ordinal));
+        });
+    }
+
+    /// <summary>
+    /// Tenta <paramref name="attempt"/> até <see cref="MaxAttempts"/> vezes, com uma pequena
+    /// pausa entre tentativas — o acoplamento RF entre a antena e o cartão é sensível ao
+    /// posicionamento físico, e uma falha isolada não significa que a operação seja impossível.
+    /// </summary>
+    private static bool WithRetries(Func<bool> attempt)
+    {
+        for (var i = 0; i < MaxAttempts; i++)
         {
-            return false;
+            if (attempt())
+            {
+                return true;
+            }
+
+            if (i < MaxAttempts - 1)
+            {
+                Thread.Sleep(RetryDelay);
+            }
         }
 
-        // "hf mf csetblk" só imprime algo além da linha "Writing block number..." quando falha
-        // (cartão não respondeu ao modo mágico Gen1a, ou o backdoor não é suportado).
-        return !output.Contains("Can't write block", StringComparison.Ordinal);
+        return false;
     }
 
     private string RequireKey(string readerName, int absoluteBlock)
