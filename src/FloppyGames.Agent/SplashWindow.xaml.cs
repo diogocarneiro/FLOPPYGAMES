@@ -95,6 +95,35 @@ public partial class SplashWindow : Window
         BackgroundImage.Visibility = Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// Mostra uma capa obtida em memória (ex. descarregada do CDN da Steam), para lançamentos
+    /// onde não há um ficheiro de capa junto ao GAME.INI — um cartão NFC não tem espaço para uma
+    /// imagem, mas o jogo já está instalado localmente, por isso a capa vem diretamente da
+    /// plataforma em vez de precisar de estar gravada no suporte.
+    /// </summary>
+    public void SetCoverFromBytes(byte[] coverBytes)
+    {
+        try
+        {
+            using var stream = new MemoryStream(coverBytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            CoverImage.Source = bitmap;
+            CoverCard.Visibility = Visibility.Visible;
+            BackgroundImage.Source = bitmap;
+            BackgroundImage.Visibility = Visibility.Visible;
+        }
+        catch (NotSupportedException)
+        {
+            // Capa descarregada corrompida ou em formato não suportado — mantém sem capa.
+        }
+    }
+
     public void SetStatus(string message) => StatusText.Text = message;
 
     /// <summary>Mostra o UID do cartão NFC que despoletou o lançamento — sem efeito para disquete/USB.</summary>
