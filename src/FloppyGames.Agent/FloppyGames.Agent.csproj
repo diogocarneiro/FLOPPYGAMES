@@ -7,6 +7,9 @@
   <ItemGroup>
     <None Include="Assets\floppy-motor.wav" CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="Assets\AppIcon.ico" />
+    <None Include="..\..\tools\proxmark3\proxmark3.exe" LinkBase="Tools\proxmark3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <PropertyGroup>

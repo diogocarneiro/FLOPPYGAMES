@@ -154,6 +154,9 @@
   <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Échec de l'écriture sur la carte — voir les journaux.</value></data>
   <data name="LS_Nfc_NoCardPresent" xml:space="preserve"><value>Présente une carte au lecteur avant d'écrire.</value></data>
   <data name="LS_Nfc_CoverNotWritten" xml:space="preserve"><value>La jaquette choisie ne sera pas écrite sur la carte (pas assez de place).</value></data>
+  <data name="LS_Nfc_FormatButton" xml:space="preserve"><value>Formater la carte et écrire</value></data>
+  <data name="LS_Nfc_FormatConfirm" xml:space="preserve"><value>Ceci essaie d'écrire sans vérifier les clés actuelles de la carte — ne fonctionne que sur les clones « magic » (Gen1a/Gen2), jamais sur une carte Mifare Classic authentique. La carte peut rester partiellement écrite si ça échoue à mi-chemin. Continuer ?</value></data>
+  <data name="LS_Nfc_FormatFailed" xml:space="preserve"><value>Échec du formatage — cette carte n'est probablement pas un clone « magic ».</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimer...</value></data>

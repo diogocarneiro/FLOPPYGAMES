@@ -8,4 +8,6 @@ public sealed record NfcCardWriteCheck(NfcCardWriteCheckStatus Status, string? M
     public static NfcCardWriteCheck NeedsConfirmation(string message) => new(NfcCardWriteCheckStatus.NeedsConfirmation, message);
 
     public static NfcCardWriteCheck Blocked(string message) => new(NfcCardWriteCheckStatus.Blocked, message);
+
+    public static NfcCardWriteCheck AuthenticationFailed(string message) => new(NfcCardWriteCheckStatus.AuthenticationFailed, message);
 }

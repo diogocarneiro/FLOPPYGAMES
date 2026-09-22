@@ -91,6 +91,13 @@ public sealed class PcscMifareCardGateway : IMifareCardGateway, IDisposable
         }
     }
 
+    /// <summary>
+    /// Sempre <c>false</c>: a escrita em modo mágico (backdoor Gen1a) não é um pseudo-APDU PC/SC
+    /// standard — precisa de comandos de baixo nível que os leitores genéricos normalmente
+    /// filtram. Só o backend Proxmark3 suporta isto nesta versão.
+    /// </summary>
+    public bool TryMagicWriteBlock(string readerName, int absoluteBlock, byte[] data) => false;
+
     private ICardReader Connect(string readerName)
     {
         if (_reader is not null && string.Equals(_connectedReaderName, readerName, StringComparison.OrdinalIgnoreCase))

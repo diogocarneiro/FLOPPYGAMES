@@ -154,6 +154,9 @@
   <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Error al escribir en la tarjeta — ver registros.</value></data>
   <data name="LS_Nfc_NoCardPresent" xml:space="preserve"><value>Acerca una tarjeta al lector antes de escribir.</value></data>
   <data name="LS_Nfc_CoverNotWritten" xml:space="preserve"><value>La carátula elegida no se grabará en la tarjeta (no hay espacio suficiente).</value></data>
+  <data name="LS_Nfc_FormatButton" xml:space="preserve"><value>Formatear tarjeta y escribir</value></data>
+  <data name="LS_Nfc_FormatConfirm" xml:space="preserve"><value>Esto intenta escribir sin comprobar las claves actuales de la tarjeta — solo funciona en clones «magic» (Gen1a/Gen2), nunca en una tarjeta Mifare Classic genuina. La tarjeta puede quedar parcialmente escrita si falla a mitad de camino. ¿Continuar?</value></data>
+  <data name="LS_Nfc_FormatFailed" xml:space="preserve"><value>Error al formatear — esta tarjeta probablemente no es un clon «magic».</value></data>
 
   <!-- LabelPrintWindow -->
   <data name="LPW_PrintButton" xml:space="preserve"><value>Imprimir...</value></data>

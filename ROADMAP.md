@@ -139,33 +139,44 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   teste estava vazia, por isso falta a confirmação final com um jogo GOG realmente instalado.
   Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
-- [x] Suporte a cartões NFC/RFID (Mifare Classic 1K/4K, via leitor PC/SC como o ACR122U) como
-  gatilho alternativo à disquete/pen: o Label Studio deteta o leitor e grava o GAME.INI no cartão,
-  cada cartão expõe o seu UID de hardware, e o Agent mostra-o na splash como "CARD ID" ao lançar a
-  partir de um cartão. **NÃO verificado contra hardware real** — ao contrário de Steam/Epic/GOG
-  (todos verificados com dados/hardware reais desta máquina antes de serem dados como prontos), não
-  havia nenhum leitor PC/SC ligado a esta máquina nesta sessão. Construído inteiramente a partir de
-  documentação pública do protocolo PC/SC (pacote NuGet `PCSC`, comandos pseudo-APDU `FF 82/86/B0/D6`
-  popularizados pelos leitores ACR) e do layout de setores/blocos do Mifare Classic — compilado com
-  sucesso contra a API real do pacote `PCSC` instalado (a única verificação possível sem hardware),
-  mas o comportamento em fio (autenticação, leitura/escrita de blocos, deteção de tipo de cartão via
-  ATR) fica por confirmar. Arquitetura: pipeline paralela em `Core/Nfc/` + `Core/Launch/NfcCardSessionManager`,
-  composta lado a lado com a pipeline de disquete/USB existente (não reaproveita `driveRoot` como
-  chave — um cartão não tem sistema de ficheiros nem espaço para capa). Formato de gravação: reaproveita
-  o texto GAME.INI já existente (`GameIniWriter`/`GameIniParser`), fatiado em blocos de 16 bytes com um
-  prefixo de comprimento — sem inventar um formato binário novo. Capacidade útil: 750 bytes num Mifare
-  1K (752 brutos − prefixo), ~3438 bytes num 4K, excluindo sempre o bloco de fabrico (UID) e os blocos
-  trailer (chaves/bits de acesso) de cada setor. Autenticação só com a chave de fábrica
-  (`FFFFFFFFFFFF`) — nunca re-chaveia um setor. Capacidade opcional e desligada por omissão
-  (`AgentSettings.NfcEnabled`), para máquinas sem leitor nunca tocarem no subsistema PC/SC.
-  **Checklist de validação manual, para quando houver um leitor real disponível:**
-  - [ ] Leitor ligado sem cartão presente → Label Studio mostra "à espera de cartão", não "sem leitor".
-  - [ ] Cartão Mifare Classic 1K em branco → UID mostrado, escrita bem-sucedida, releitura reconstrói o `GameConfig` original.
-  - [ ] Cartão previamente usado noutro sistema (chaves não-standard) → erro de autenticação claro, sem exceção nem escrita parcial.
-  - [ ] Etiqueta não-Mifare-Classic (ex. NTAG) → tipo de cartão não suportado, sem crash nem leitura incorreta.
-  - [ ] Desligar o leitor a meio de uma sessão do Agent (com `NfcEnabled` ativo) → um aviso no log, disquete/USB continuam a funcionar normalmente.
-  - [ ] Descrição longa que exceda os 750 bytes úteis → bloqueado com a contagem de bytes correta, sem escrita parcial.
-  - [ ] Aproximar um cartão gravado ao leitor ligado ao Agent → mesmo fluxo de lançamento/splash/terminação-na-remoção da disquete, com "CARD ID" visível na splash.
+- [x] Suporte a cartões NFC/RFID (Mifare Classic 1K/4K) como gatilho alternativo à disquete/pen,
+  com **dois backends** compostos automaticamente (`CompositeNfcBackend`, em `Core/Nfc/`): um
+  leitor PC/SC genérico (ex. ACR122U) e um **Proxmark3**. O Label Studio deteta o(s) leitor(es)
+  ligado(s) e grava o GAME.INI no cartão; o Agent mostra o UID na splash como "CARD ID" ao lançar
+  a partir de um cartão.
+  - **Backend PC/SC**: construído a partir de documentação pública do protocolo (pacote NuGet
+    `PCSC`, comandos pseudo-APDU `FF 82/86/B0/D6` populares nos leitores ACR) — compila contra a
+    API real do pacote instalado, mas **continua por verificar contra hardware real**: não houve
+    nenhum leitor PC/SC genuíno disponível nesta sessão.
+  - **Backend Proxmark3**: **verificado de ponta a ponta contra hardware real** — um Proxmark3
+    RDV4 com firmware Iceman, ligado por USB, e um cartão Mifare Classic 1K Gen1a real. Deteção do
+    leitor via WMI (VID USB `9AC4`, registado ao projeto Proxmark3 em pid.codes), leitura/escrita
+    de blocos através do cliente oficial `proxmark3.exe` (compilado a partir do código-fonte do
+    fork Iceman via MSYS2 UCRT64, GPL-2.0, corrido sempre como processo externo — nunca ligado ao
+    código do FloppyGames, ver `tools/proxmark3/NOTICE.md`). O comando `-c "hf 14a info"` deu UID/
+    SAK/tipo de cartão corretos; `hf mf rdbl`/`hf mf wrbl` leram e escreveram blocos com sucesso;
+    e o fluxo completo `NfcCardConfigWriter.Write` → `NfcCardConfigReader.Read` reconstruiu um
+    `GameConfig` real (título, AppID, processo, descrição) byte a byte a partir do cartão físico.
+    Foi preciso escolher a tag `v4.21611` do repositório (não a `master`), porque o cliente recusa
+    falar com firmware cujo `CAPABILITIES_VERSION` não corresponda ao seu — a versão certa
+    encontrou-se comparando com a versão reportada pelo próprio dispositivo.
+  - Arquitetura: pipeline paralela em `Core/Nfc/` + `Core/Launch/NfcCardSessionManager`, composta
+    lado a lado com a pipeline de disquete/USB existente (não reaproveita `driveRoot` como chave —
+    um cartão não tem sistema de ficheiros nem espaço para capa). Formato de gravação: reaproveita
+    o texto GAME.INI já existente (`GameIniWriter`/`GameIniParser`), fatiado em blocos de 16 bytes
+    com um prefixo de comprimento — sem inventar um formato binário novo. Capacidade útil: 750
+    bytes num Mifare 1K (752 brutos − prefixo), ~3438 bytes num 4K, excluindo sempre o bloco de
+    fabrico (UID) e os blocos trailer (chaves/bits de acesso) de cada setor. Autenticação só com a
+    chave de fábrica (`FFFFFFFFFFFF`) — nunca re-chaveia um setor. Capacidade opcional e desligada
+    por omissão (`AgentSettings.NfcEnabled`), para máquinas sem leitor nunca tocarem em PC/SC/Proxmark3.
+  - **Checklist de validação manual ainda por fazer** (para o backend PC/SC, e para o Proxmark3 em
+    cenários fora do já testado):
+    - [ ] Leitor PC/SC genuíno (ex. ACR122U) ligado → confirmar deteção e leitura/escrita.
+    - [ ] Cartão Mifare Classic **4K** (só 1K foi testado).
+    - [ ] Cartão previamente usado noutro sistema (chaves não-standard) → confirmar erro de autenticação claro, sem exceção nem escrita parcial.
+    - [ ] Etiqueta não-Mifare-Classic (ex. NTAG) → confirmar "tipo de cartão não suportado", sem crash nem leitura incorreta.
+    - [ ] Desligar o leitor a meio de uma sessão do Agent (com `NfcEnabled` ativo) → confirmar aviso no log, disquete/USB continuam a funcionar.
+    - [ ] Fluxo completo pela UI do Label Studio (não só pelas classes `Core` diretamente) e pelo Agent com splash/"CARD ID".
 
 ---
 

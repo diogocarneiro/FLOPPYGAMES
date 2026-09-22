@@ -35,15 +35,17 @@ public class NfcCardConfigWriterTests
     }
 
     [Fact]
-    public void Check_AuthenticationFailsOnFirstSector_ReturnsBlocked()
+    public void Check_AuthenticationFailsOnFirstSector_ReturnsAuthenticationFailed()
     {
+        // Distinto de Blocked: um cartão clone "magic" ainda pode ser escrito via WriteMagic
+        // mesmo que a chave de fábrica não autentique.
         var gateway = new FakeMifareCardGateway();
         gateway.FailAuthenticationForSector(0);
         var writer = new NfcCardConfigWriter(gateway);
 
         var check = writer.Check(Reader, MifareCardType.Classic1K, Config);
 
-        Assert.Equal(NfcCardWriteCheckStatus.Blocked, check.Status);
+        Assert.Equal(NfcCardWriteCheckStatus.AuthenticationFailed, check.Status);
     }
 
     [Fact]
@@ -113,5 +115,55 @@ public class NfcCardConfigWriterTests
         var writer = new NfcCardConfigWriter(gateway);
 
         Assert.Throws<InvalidOperationException>(() => writer.Write(Reader, MifareCardType.Classic1K, Config));
+    }
+
+    [Fact]
+    public void WriteMagic_CardSupportsBackdoor_WritesWithoutAuthenticating()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        gateway.FailAuthenticationForSector(0);
+        var writer = new NfcCardConfigWriter(gateway);
+
+        var success = writer.WriteMagic(Reader, MifareCardType.Classic1K, Config);
+
+        Assert.True(success);
+        Assert.Empty(gateway.AuthenticatedSectors);
+        Assert.NotEmpty(gateway.MagicWriteCalls);
+    }
+
+    [Fact]
+    public void WriteMagic_ThenRead_RoundTripsConfig()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.WriteMagic(Reader, MifareCardType.Classic1K, Config);
+        var result = new NfcCardConfigReader(gateway).Read(Reader, "04A1B2C3", MifareCardType.Classic1K);
+
+        Assert.Equal(NfcCardScanStatus.Valid, result.Status);
+        Assert.Equal("Portal", result.Config!.Title);
+    }
+
+    [Fact]
+    public void WriteMagic_CardDoesNotSupportBackdoor_ReturnsFalse()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = false };
+        var writer = new NfcCardConfigWriter(gateway);
+
+        var success = writer.WriteMagic(Reader, MifareCardType.Classic1K, Config);
+
+        Assert.False(success);
+    }
+
+    [Fact]
+    public void WriteMagic_NeverTargetsTrailerOrManufacturerBlocks()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.WriteMagic(Reader, MifareCardType.Classic1K, Config);
+
+        Assert.DoesNotContain(gateway.MagicWriteCalls, call => call.AbsoluteBlock == 0);
+        Assert.DoesNotContain(gateway.MagicWriteCalls, call => (call.AbsoluteBlock + 1) % 4 == 0);
     }
 }

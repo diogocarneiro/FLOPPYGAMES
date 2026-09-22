@@ -122,6 +122,8 @@
                 <Button x:Name="PrintLabelButton" Height="32" Margin="0,8,0,0"
                         Click="OnPrintLabelClicked" />
                 <TextBlock x:Name="WriteStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,8,0,0" />
+                <Button x:Name="FormatCardButton" Height="32" Margin="0,8,0,0" Visibility="Collapsed"
+                        Foreground="#FFB00000" Click="OnFormatCardClicked" />
             </StackPanel>
 
             <Grid Margin="16,0,0,0">

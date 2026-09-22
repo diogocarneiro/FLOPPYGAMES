@@ -15,6 +15,10 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 
     public bool ThrowOnWrite { get; set; }
 
+    public bool SupportsMagicWrite { get; set; }
+
+    public List<(int AbsoluteBlock, byte[] Data)> MagicWriteCalls { get; } = new();
+
     public void SetBlock(int absoluteBlock, byte[] data) => _blocks[absoluteBlock] = data;
 
     public void FailAuthenticationForSector(int sector) => _sectorsRequiringAuthFailure.Add(sector);
@@ -60,5 +64,17 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 
         WriteCalls.Add((absoluteBlock, data));
         _blocks[absoluteBlock] = data;
+    }
+
+    public bool TryMagicWriteBlock(string readerName, int absoluteBlock, byte[] data)
+    {
+        if (!SupportsMagicWrite)
+        {
+            return false;
+        }
+
+        MagicWriteCalls.Add((absoluteBlock, data));
+        _blocks[absoluteBlock] = data;
+        return true;
     }
 }

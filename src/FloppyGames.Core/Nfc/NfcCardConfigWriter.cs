@@ -38,7 +38,7 @@ public sealed class NfcCardConfigWriter
         {
             if (!_gateway.Authenticate(readerName, firstBlock.Sector, MifareKeys.FactoryDefaultKeyA))
             {
-                return NfcCardWriteCheck.Blocked(Strings.Core_Nfc_AuthenticationFailed(firstBlock.Sector));
+                return NfcCardWriteCheck.AuthenticationFailed(Strings.Core_Nfc_AuthenticationFailed(firstBlock.Sector));
             }
 
             var firstBlockData = _gateway.ReadBlock(readerName, firstBlock.AbsoluteBlock);
@@ -78,6 +78,32 @@ public sealed class NfcCardConfigWriter
 
             _gateway.WriteBlock(readerName, block.AbsoluteBlock, blocks[i]);
         }
+    }
+
+    /// <summary>
+    /// Tenta gravar sem qualquer autenticação, através do backdoor "modo mágico" Gen1a/Gen2 (ver
+    /// <see cref="IMifareCardGateway.TryMagicWriteBlock"/>) — a única forma de recuperar um
+    /// cartão cujas chaves atuais são desconhecidas, e só funciona nesse tipo de cartão clone,
+    /// nunca num Mifare Classic genuíno da NXP. Chamar só depois do utilizador confirmar
+    /// explicitamente (é uma escrita mais "bruta", sem a confirmação normal de "já tem dados").
+    /// Devolve <c>false</c> ao primeiro bloco que falhar — nesse caso o cartão pode ter ficado
+    /// parcialmente escrito, tal como aconteceria ao formatar qualquer cartão a meio.
+    /// </summary>
+    public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config)
+    {
+        var iniText = GameIniWriter.Write(config);
+        var blocks = MifareConfigCodec.Encode(iniText, cardType);
+        var layout = MifareCardLayout.UsableDataBlocks(cardType);
+
+        for (var i = 0; i < blocks.Length; i++)
+        {
+            if (!_gateway.TryMagicWriteBlock(readerName, layout[i].AbsoluteBlock, blocks[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static string FormatBytes(long bytes) => bytes switch

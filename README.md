@@ -195,12 +195,13 @@ O Label Studio e o Agent suportam três lojas, todas com o mecanismo confirmado 
 ### Nota técnica: cartões NFC/RFID
 
 Suporte opcional (desligado por omissão, `AgentSettings.NfcEnabled`) para gravar o `GAME.INI` num
-cartão **Mifare Classic 1K/4K** em vez de uma disquete/pen, através de um leitor PC/SC genérico (ex.
-ACR122U) ligado ao PC. Cada cartão tem um UID de hardware próprio, mostrado no ecrã de arranque como
-"CARD ID" quando o lançamento é despoletado por um cartão.
+cartão **Mifare Classic 1K/4K** em vez de uma disquete/pen. Dois backends são compostos
+automaticamente (`CompositeNfcBackend`, em `Core/Nfc/`) — o Label Studio e o Agent usam o que
+estiver ligado, sem escolha manual. Cada cartão tem um UID de hardware próprio, mostrado no ecrã de
+arranque como "CARD ID" quando o lançamento é despoletado por um cartão.
 
-**Ao contrário de Steam/Epic/GOG, este mecanismo não foi verificado contra hardware real** — não
-havia nenhum leitor PC/SC ligado à máquina onde foi construído. É montado inteiramente a partir de
+**Backend PC/SC** (leitor genérico, ex. ACR122U) — **não verificado contra hardware real**, ao
+contrário de Steam/Epic/GOG: não havia nenhum leitor PC/SC genuíno disponível. Montado a partir de
 documentação pública:
 
 - Comunicação PC/SC via o pacote NuGet [`PCSC`](https://github.com/danm-de/pcsc-sharp) — compilado
@@ -211,6 +212,16 @@ documentação pública:
   leitores ACR e largamente copiada por outros fabricantes, mas não universal.
 - Deteção do tipo de cartão (1K vs. 4K) a partir do ATR, seguindo a codificação documentada pelo
   grupo de trabalho PC/SC Parte 3 para cartões contactless.
+
+**Backend Proxmark3** — **verificado de ponta a ponta contra hardware real**: um Proxmark3 RDV4
+com firmware Iceman e um cartão Mifare Classic 1K Gen1a. O leitor é detetado via WMI pelo VID USB
+`9AC4` (registado ao projeto Proxmark3 em pid.codes); a leitura/escrita de blocos corre através do
+cliente oficial `proxmark3.exe`, sempre invocado como processo externo (nunca ligado ao código do
+FloppyGames — é GPL-2.0, o FloppyGames mantém-se MIT). O binário é compilado a partir do código-
+fonte do fork Iceman via MSYS2 UCRT64 e vive em `tools/proxmark3/` (ver
+[`tools/proxmark3/NOTICE.md`](tools/proxmark3/NOTICE.md) para a proveniência, licença e como
+recompilar). A versão do cliente tem de corresponder ao `CAPABILITIES_VERSION` que o firmware do
+dispositivo reporta — usar uma versão errada faz o cliente recusar-se a comunicar.
 
 O `GAME.INI` é gravado tal como já é escrito para disquete/pen (mesmo `GameIniWriter`/
 `GameIniParser`, sem formato novo), só fatiado em blocos de 16 bytes com um prefixo de comprimento —
@@ -302,7 +313,7 @@ FLOPPYGAMES/
 | Deteção de mídia | `WMI (Win32_VolumeChangeEvent)` + sondagem dedicada para disquetes | Eventos para pens USB (sem *polling*); sondagem leve e confinada a `A:\`/`B:\` para troca de disco em drives de disquete, onde o Windows não notifica por evento. |
 | Lançamento por plataforma | `steam://run/`, URI da Epic, `.exe` direto na GOG | Cada loja delega a validação/atualização do jogo em si mesma, quando tem protocolo para isso; a GOG não tem, por isso é a exceção. |
 | Biblioteca GOG | `Microsoft.Data.Sqlite` sobre `galaxy-2.0.db` (só-leitura) | O GOG Galaxy 2.0 guarda tudo numa base de dados SQLite própria, não no Registo — única dependência externa nova, justificada por não haver alternativa razoável a implementar à mão (ver [nota técnica](#nota-técnica-suporte-multi-plataforma)). |
-| Cartões NFC/RFID (opcional) | `PCSC` sobre `winscard.dll` | Wrapper .NET padrão para PC/SC; não normaliza os comandos Mifare em si (pseudo-APDU manual) — **não verificado contra hardware real** (ver [nota técnica](#nota-técnica-cartões-nfcrfid)). |
+| Cartões NFC/RFID (opcional) | `PCSC` sobre `winscard.dll` **ou** cliente `proxmark3.exe` externo | Dois backends compostos automaticamente. PC/SC não normaliza os comandos Mifare em si (pseudo-APDU manual) — não verificado contra hardware real. Proxmark3 — **verificado contra hardware real** (leitura/escrita completas) — corre sempre como processo externo, nunca ligado ao código (GPL-2.0 vs. MIT do FloppyGames). Ver [nota técnica](#nota-técnica-cartões-nfcrfid). |
 | Instalador | Inno Setup | Leve, scriptável, suporta tarefas opcionais (arranque automático). |
 | Persistência de config | `settings.json` (Agent) + Registo do Windows (para o toggle de arranque) | Simples, sem dependência de base de dados própria do FloppyGames. |
 

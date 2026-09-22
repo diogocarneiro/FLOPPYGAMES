@@ -25,7 +25,7 @@ public partial class MainWindow : Window
     private readonly AgentSettingsStore _settingsStore;
     private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, SplashWindow> _nfcSplashWindows = new(StringComparer.OrdinalIgnoreCase);
-    private PcscMifareCardGateway? _nfcGateway;
+    private IDisposable? _nfcBackendDisposable;
     private NfcGameMediaService? _nfcMediaService;
     private NfcCardSessionManager? _nfcSessionManager;
     private bool _realShutdownRequested;
@@ -99,20 +99,21 @@ public partial class MainWindow : Window
     /// Compõe a pilha NFC (leitor → deteção de cartão → leitura → sessão de jogo) e liga-a aos
     /// mesmos handlers de splash/estado da pipeline de disquete/USB. Só é chamado quando
     /// <see cref="AgentSettings.NfcEnabled"/> está ativo — máquinas sem esse opt-in nunca tocam
-    /// no subsistema PC/SC. Nunca deixa uma falha de arranque do PC/SC (serviço "Cartão
-    /// Inteligente" desligado, sem leitor instalado, etc.) derrubar o resto do Agent: fica só um
-    /// aviso no log e a deteção NFC simplesmente não ativa nesta sessão.
+    /// no subsistema PC/SC/Proxmark3. Combina leitores PC/SC genéricos com um Proxmark3 (se
+    /// <c>tools/proxmark3/proxmark3.exe</c> estiver presente — ver <see cref="NfcBackendFactory"/>).
+    /// Nunca deixa uma falha de arranque de qualquer um dos dois (serviço "Cartão Inteligente"
+    /// desligado, sem leitor instalado, etc.) derrubar o resto do Agent: fica só um aviso no log e
+    /// a deteção NFC simplesmente não ativa nesta sessão.
     /// </summary>
     private void StartNfcStack(CompositeGameLauncher launcher)
     {
         try
         {
-            var readerDetector = new PcscReaderDetector();
-            var presenceProbe = new PcscNfcCardPresenceProbe();
-            _nfcGateway = new PcscMifareCardGateway();
+            var backend = NfcBackendFactory.Create();
+            _nfcBackendDisposable = backend.Disposable;
 
-            var nfcWatcher = new PollingNfcCardWatcher(readerDetector, presenceProbe, _logger);
-            var nfcReader = new NfcCardConfigReader(_nfcGateway);
+            var nfcWatcher = new PollingNfcCardWatcher(backend.ReaderDetector, backend.CardPresenceProbe, _logger);
+            var nfcReader = new NfcCardConfigReader(backend.CardGateway);
             _nfcMediaService = new NfcGameMediaService(nfcWatcher, nfcReader, _logger);
             _nfcMediaService.CardInserted += OnCardInserted;
             _nfcMediaService.CardRemoved += OnCardRemoved;
@@ -322,6 +323,6 @@ public partial class MainWindow : Window
         _mediaService.Dispose();
         _nfcSessionManager?.Dispose();
         _nfcMediaService?.Dispose();
-        _nfcGateway?.Dispose();
+        _nfcBackendDisposable?.Dispose();
     }
 }

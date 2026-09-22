@@ -161,6 +161,9 @@ public static class Strings
     public static string LS_Nfc_WriteFailed => Get("LS_Nfc_WriteFailed");
     public static string LS_Nfc_NoCardPresent => Get("LS_Nfc_NoCardPresent");
     public static string LS_Nfc_CoverNotWritten => Get("LS_Nfc_CoverNotWritten");
+    public static string LS_Nfc_FormatButton => Get("LS_Nfc_FormatButton");
+    public static string LS_Nfc_FormatConfirm => Get("LS_Nfc_FormatConfirm");
+    public static string LS_Nfc_FormatFailed => Get("LS_Nfc_FormatFailed");
 
     // LabelPrintWindow
     public static string LPW_PrintButton => Get("LPW_PrintButton");

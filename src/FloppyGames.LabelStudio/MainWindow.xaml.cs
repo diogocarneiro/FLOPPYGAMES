@@ -27,7 +27,7 @@ public partial class MainWindow : Window
     private readonly FloppyMediaWriter _mediaWriter;
     private readonly GameCatalog _catalog;
     private readonly INfcReaderDetector _nfcReaderDetector;
-    private readonly PcscMifareCardGateway _nfcGateway;
+    private readonly IDisposable? _nfcBackendDisposable;
     private readonly NfcCardConfigWriter _nfcCardWriter;
     private readonly PollingNfcCardWatcher _nfcCardWatcher;
 
@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private string _coverFileName = "cover.jpg";
     private CancellationTokenSource? _coverFetchCts;
     private NfcCardPresence? _presentNfcCard;
+    private (NfcCardPresence Card, GameConfig Config)? _pendingNfcFormatConfig;
 
     public MainWindow()
     {
@@ -55,10 +56,11 @@ public partial class MainWindow : Window
         _mediaWriter = new FloppyMediaWriter(new FileSystemDriveInspector());
         _catalog = new GameCatalog();
 
-        _nfcReaderDetector = new PcscReaderDetector();
-        _nfcGateway = new PcscMifareCardGateway();
-        _nfcCardWriter = new NfcCardConfigWriter(_nfcGateway);
-        _nfcCardWatcher = new PollingNfcCardWatcher(_nfcReaderDetector, new PcscNfcCardPresenceProbe(), _logger);
+        var nfcBackend = NfcBackendFactory.Create();
+        _nfcReaderDetector = nfcBackend.ReaderDetector;
+        _nfcBackendDisposable = nfcBackend.Disposable;
+        _nfcCardWriter = new NfcCardConfigWriter(nfcBackend.CardGateway);
+        _nfcCardWatcher = new PollingNfcCardWatcher(nfcBackend.ReaderDetector, nfcBackend.CardPresenceProbe, _logger);
         _nfcCardWatcher.CardArrived += OnNfcCardArrived;
         _nfcCardWatcher.CardRemoved += OnNfcCardRemoved;
 
@@ -134,6 +136,7 @@ public partial class MainWindow : Window
         RefreshDrivesButton.Content = Strings.LS_RefreshButton;
         RefreshNfcReaderButton.Content = Strings.LS_Nfc_RefreshReaderButton;
         WriteButton.Content = Strings.LS_WriteButton;
+        FormatCardButton.Content = Strings.LS_Nfc_FormatButton;
         PrintLabelButton.Content = Strings.LS_PrintButton;
         ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
     }
@@ -214,6 +217,8 @@ public partial class MainWindow : Window
         ProcessBox.Text = _executableFinder.FindSuggestedExecutable(game.InstallPath) ?? string.Empty;
         DescriptionBox.Text = string.Empty;
         WriteStatusText.Text = string.Empty;
+        FormatCardButton.Visibility = Visibility.Collapsed;
+        _pendingNfcFormatConfig = null;
 
         _coverFetchCts?.Cancel();
         CoverImage.Source = null;
@@ -452,7 +457,7 @@ public partial class MainWindow : Window
     private void OnMainWindowClosed(object? sender, EventArgs e)
     {
         _nfcCardWatcher.Dispose();
-        _nfcGateway.Dispose();
+        _nfcBackendDisposable?.Dispose();
     }
 
     private void OnWriteClicked(object sender, RoutedEventArgs e)
@@ -549,6 +554,8 @@ public partial class MainWindow : Window
 
     private void WriteToNfcCard(GameConfig config)
     {
+        FormatCardButton.Visibility = Visibility.Collapsed;
+
         if (_presentNfcCard is not { } card)
         {
             WriteStatusText.Text = Strings.LS_Nfc_NoCardPresent;
@@ -561,6 +568,18 @@ public partial class MainWindow : Window
         }
 
         var check = _nfcCardWriter.Check(card.ReaderName, card.CardType, config);
+
+        if (check.Status == NfcCardWriteCheckStatus.AuthenticationFailed)
+        {
+            WriteStatusText.Text = check.Message;
+            // Chave de fábrica não autentica — pode ser um clone "magic" que ainda responde ao
+            // backdoor Gen1a/Gen2, sem precisar de saber a chave atual. Só o Proxmark3 suporta
+            // isto (ver IMifareCardGateway.TryMagicWriteBlock); o botão fica sempre visível nesse
+            // caso, a própria escrita é que reporta se o cartão não for um clone.
+            _pendingNfcFormatConfig = (card, config);
+            FormatCardButton.Visibility = Visibility.Visible;
+            return;
+        }
 
         if (check.Status == NfcCardWriteCheckStatus.Blocked)
         {
@@ -589,6 +608,44 @@ public partial class MainWindow : Window
         {
             _logger.Error(ex, "Falha ao gravar no cartão NFC UID {Uid}.", card.Uid);
             WriteStatusText.Text = Strings.LS_Nfc_WriteFailed;
+        }
+    }
+
+    private void OnFormatCardClicked(object sender, RoutedEventArgs e)
+    {
+        if (_pendingNfcFormatConfig is not { } pending)
+        {
+            return;
+        }
+
+        var (card, config) = pending;
+
+        var confirmed = MessageBox.Show(Strings.LS_Nfc_FormatConfirm, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirmed != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        FormatCardButton.Visibility = Visibility.Collapsed;
+
+        try
+        {
+            if (_nfcCardWriter.WriteMagic(card.ReaderName, card.CardType, config))
+            {
+                WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
+                _logger.Information(
+                    "Cartão NFC UID {Uid} formatado e gravado via backdoor mágico para {Title} ({Platform}).",
+                    card.Uid, config.Title, config.Platform);
+            }
+            else
+            {
+                WriteStatusText.Text = Strings.LS_Nfc_FormatFailed;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Falha ao formatar o cartão NFC UID {Uid}.", card.Uid);
+            WriteStatusText.Text = Strings.LS_Nfc_FormatFailed;
         }
     }
 
