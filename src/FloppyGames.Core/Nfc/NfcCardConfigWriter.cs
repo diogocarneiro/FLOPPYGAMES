@@ -11,6 +11,8 @@ namespace FloppyGames.Core.Nfc;
 /// </summary>
 public sealed class NfcCardConfigWriter
 {
+    private static readonly byte[] BlankBlock = new byte[16];
+
     private readonly IMifareCardGateway _gateway;
 
     public NfcCardConfigWriter(IMifareCardGateway gateway) => _gateway = gateway;
@@ -59,10 +61,16 @@ public sealed class NfcCardConfigWriter
 
     /// <summary>
     /// Escreve de facto no cartão. Chamar só depois de <see cref="Check"/> não devolver
-    /// <c>Blocked</c>. Cada bloco é uma comunicação real com o hardware (pode demorar segundos,
-    /// sobretudo com o backend Proxmark3 e as suas tentativas automáticas) — por isso esta chamada
-    /// é sempre potencialmente lenta e NUNCA deve correr na thread de UI; <paramref name="progress"/>
-    /// existe precisamente para a UI poder mostrar "bloco X de Y" enquanto espera numa thread à parte.
+    /// <c>Blocked</c>. Percorre SEMPRE todos os blocos utilizáveis do cartão, não só os que o
+    /// novo jogo precisa: os primeiros levam o conteúdo real, o resto é limpo a zeros. Isto
+    /// garante que nenhum resto de um jogo anterior (gravado com um GAME.INI mais comprido) fica
+    /// para trás num bloco que o novo conteúdo já não usa — mesmo sem essa limpeza a leitura já
+    /// ficaria correta (o comprimento declarado no primeiro bloco diz onde parar), mas isto evita
+    /// qualquer dúvida ao inspecionar o cartão diretamente. Cada bloco é uma comunicação real com
+    /// o hardware (pode demorar segundos, sobretudo com o backend Proxmark3 e as suas tentativas
+    /// automáticas) — por isso esta chamada é sempre potencialmente lenta e NUNCA deve correr na
+    /// thread de UI; <paramref name="progress"/> existe precisamente para a UI poder mostrar
+    /// "bloco X de Y" enquanto espera numa thread à parte.
     /// </summary>
     public void Write(
         string readerName, MifareCardType cardType, GameConfig config,
@@ -74,7 +82,7 @@ public sealed class NfcCardConfigWriter
         var keysToTry = MifareKeys.CandidatesWith(extraKeys);
 
         var authenticatedSectors = new HashSet<int>();
-        for (var i = 0; i < blocks.Length; i++)
+        for (var i = 0; i < layout.Count; i++)
         {
             var block = layout[i];
             if (!authenticatedSectors.Contains(block.Sector))
@@ -87,8 +95,9 @@ public sealed class NfcCardConfigWriter
                 authenticatedSectors.Add(block.Sector);
             }
 
-            _gateway.WriteBlock(readerName, block.AbsoluteBlock, blocks[i]);
-            progress?.Report(new NfcCardWriteProgress(i + 1, blocks.Length, block.Sector, block.AbsoluteBlock, blocks[i]));
+            var data = i < blocks.Length ? blocks[i] : BlankBlock;
+            _gateway.WriteBlock(readerName, block.AbsoluteBlock, data);
+            progress?.Report(new NfcCardWriteProgress(i + 1, layout.Count, block.Sector, block.AbsoluteBlock, data));
         }
     }
 
@@ -98,8 +107,10 @@ public sealed class NfcCardConfigWriter
     /// cartão cujas chaves atuais são desconhecidas, e só funciona nesse tipo de cartão clone,
     /// nunca num Mifare Classic genuíno da NXP. Chamar só depois do utilizador confirmar
     /// explicitamente (é uma escrita mais "bruta", sem a confirmação normal de "já tem dados").
-    /// Devolve <c>false</c> ao primeiro bloco que falhar — nesse caso o cartão pode ter ficado
-    /// parcialmente escrito, tal como aconteceria ao formatar qualquer cartão a meio.
+    /// Tal como <see cref="Write"/>, percorre sempre todos os blocos utilizáveis (conteúdo real
+    /// seguido de zeros) para nunca deixar restos de um jogo anterior. Devolve <c>false</c> ao
+    /// primeiro bloco que falhar — nesse caso o cartão pode ter ficado parcialmente escrito, tal
+    /// como aconteceria ao formatar qualquer cartão a meio.
     /// </summary>
     public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config, IProgress<NfcCardWriteProgress>? progress = null)
     {
@@ -107,15 +118,16 @@ public sealed class NfcCardConfigWriter
         var blocks = MifareConfigCodec.Encode(iniText, cardType);
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
 
-        for (var i = 0; i < blocks.Length; i++)
+        for (var i = 0; i < layout.Count; i++)
         {
             var block = layout[i];
-            if (!_gateway.TryMagicWriteBlock(readerName, block.AbsoluteBlock, blocks[i]))
+            var data = i < blocks.Length ? blocks[i] : BlankBlock;
+            if (!_gateway.TryMagicWriteBlock(readerName, block.AbsoluteBlock, data))
             {
                 return false;
             }
 
-            progress?.Report(new NfcCardWriteProgress(i + 1, blocks.Length, block.Sector, block.AbsoluteBlock, blocks[i]));
+            progress?.Report(new NfcCardWriteProgress(i + 1, layout.Count, block.Sector, block.AbsoluteBlock, data));
         }
 
         return true;
@@ -123,8 +135,10 @@ public sealed class NfcCardConfigWriter
 
     /// <summary>
     /// Troca a chave de fábrica pela chave derivada de <paramref name="password"/> (ver
-    /// <see cref="NfcCardPasswordKey"/>) nos trailers dos setores usados pela configuração
-    /// gravada — os bits de acesso e o byte de utilizador ficam exatamente os de fábrica
+    /// <see cref="NfcCardPasswordKey"/>) nos trailers de TODOS os setores utilizáveis do cartão
+    /// (não só os que o jogo atual ocupa — <see cref="Write"/> limpa sempre o cartão inteiro, por
+    /// isso a proteção acompanha esse âmbito, para não deixar setores "esquecidos" com a chave de
+    /// fábrica) — os bits de acesso e o byte de utilizador ficam exatamente os de fábrica
     /// (<c>FF 07 80 69</c>), só a chave muda, para que o cartão continue reescrevível mais tarde
     /// por quem souber a password. Autentica cada setor com a chave de fábrica antes de reescrever
     /// o respetivo trailer — por isso só funciona logo a seguir a um <see cref="Write"/> bem
@@ -134,16 +148,14 @@ public sealed class NfcCardConfigWriter
     /// setores protegidos e outros não, tal como uma gravação normal interrompida a meio.
     /// </summary>
     public bool ProtectWithPassword(
-        string readerName, MifareCardType cardType, GameConfig config, string password,
+        string readerName, MifareCardType cardType, string password,
         IProgress<NfcCardWriteProgress>? progress = null)
     {
         var key = NfcCardPasswordKey.Derive(password);
         var trailerData = BuildTrailerBlock(key);
 
-        var iniText = GameIniWriter.Write(config);
-        var blocks = MifareConfigCodec.Encode(iniText, cardType);
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
-        var sectors = layout.Take(blocks.Length).Select(b => b.Sector).Distinct().ToArray();
+        var sectors = layout.Select(b => b.Sector).Distinct().ToArray();
 
         for (var i = 0; i < sectors.Length; i++)
         {

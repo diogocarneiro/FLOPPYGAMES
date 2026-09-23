@@ -133,6 +133,60 @@ public class NfcCardConfigWriterTests
     }
 
     [Fact]
+    public void Write_AlwaysTouchesEveryUsableBlock_RegardlessOfContentSize()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.Write(Reader, MifareCardType.Classic1K, Config);
+
+        Assert.Equal(MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K).Count, gateway.WriteCalls.Count);
+    }
+
+    [Fact]
+    public void Write_BlocksBeyondContent_AreZeroed()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.Write(Reader, MifareCardType.Classic1K, Config);
+
+        var contentBlockCount = MifareConfigCodec.Encode(GameIniWriter.Write(Config), MifareCardType.Classic1K).Length;
+        var leftoverWrites = gateway.WriteCalls.Skip(contentBlockCount);
+        Assert.NotEmpty(leftoverWrites);
+        Assert.All(leftoverWrites, call => Assert.Equal(new byte[16], call.Data));
+    }
+
+    [Fact]
+    public void Write_ShorterConfigAfterLongerOne_LeavesNoLeftoverBytesOnCard()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+        var longConfig = Config with { Description = new string('X', 500) };
+        writer.Write(Reader, MifareCardType.Classic1K, longConfig);
+
+        writer.Write(Reader, MifareCardType.Classic1K, Config);
+
+        var layout = MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K);
+        var contentBlockCount = MifareConfigCodec.Encode(GameIniWriter.Write(Config), MifareCardType.Classic1K).Length;
+        for (var i = contentBlockCount; i < layout.Count; i++)
+        {
+            Assert.Equal(new byte[16], gateway.ReadBlock(Reader, layout[i].AbsoluteBlock));
+        }
+    }
+
+    [Fact]
+    public void WriteMagic_AlwaysTouchesEveryUsableBlock_RegardlessOfContentSize()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.WriteMagic(Reader, MifareCardType.Classic1K, Config);
+
+        Assert.Equal(MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K).Count, gateway.MagicWriteCalls.Count);
+    }
+
+    [Fact]
     public void Write_NeverTargetsTrailerOrManufacturerBlocks()
     {
         var gateway = new FakeMifareCardGateway();
@@ -231,22 +285,18 @@ public class NfcCardConfigWriterTests
     }
 
     [Fact]
-    public void ProtectWithPassword_WritesTrailerForEachUsedSector()
+    public void ProtectWithPassword_WritesTrailerForEverySector()
     {
         var gateway = new FakeMifareCardGateway();
         var writer = new NfcCardConfigWriter(gateway);
         writer.Write(Reader, MifareCardType.Classic1K, Config);
-        var layout = MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K);
-        var usedSectors = gateway.WriteCalls
-            .Select(c => layout.First(b => b.AbsoluteBlock == c.AbsoluteBlock).Sector)
-            .Distinct()
-            .ToArray();
         gateway.WriteCalls.Clear();
+        var allSectors = MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K).Select(b => b.Sector).Distinct().ToArray();
 
-        var protectedCard = writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, Config, "hunter2");
+        var protectedCard = writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, "hunter2");
 
         Assert.True(protectedCard);
-        var expectedTrailerBlocks = usedSectors.Select(MifareCardLayout.TrailerAbsoluteBlock).OrderBy(b => b);
+        var expectedTrailerBlocks = allSectors.Select(MifareCardLayout.TrailerAbsoluteBlock).OrderBy(b => b);
         var actualTrailerBlocks = gateway.WriteCalls.Select(c => c.AbsoluteBlock).OrderBy(b => b);
         Assert.Equal(expectedTrailerBlocks, actualTrailerBlocks);
     }
@@ -258,7 +308,7 @@ public class NfcCardConfigWriterTests
         var writer = new NfcCardConfigWriter(gateway);
         writer.Write(Reader, MifareCardType.Classic1K, Config);
 
-        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, Config, "hunter2");
+        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, "hunter2");
 
         var key = NfcCardPasswordKey.Derive("hunter2");
         var trailerBlock = MifareCardLayout.TrailerAbsoluteBlock(0);
@@ -275,7 +325,7 @@ public class NfcCardConfigWriterTests
         gateway.FailAuthenticationForSector(0);
         var writer = new NfcCardConfigWriter(gateway);
 
-        var result = writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, Config, "hunter2");
+        var result = writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, "hunter2");
 
         Assert.False(result);
     }
@@ -288,7 +338,7 @@ public class NfcCardConfigWriterTests
         writer.Write(Reader, MifareCardType.Classic1K, Config);
         var reports = new List<NfcCardWriteProgress>();
 
-        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, Config, "hunter2", new SynchronousProgress<NfcCardWriteProgress>(reports.Add));
+        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, "hunter2", new SynchronousProgress<NfcCardWriteProgress>(reports.Add));
 
         Assert.NotEmpty(reports);
         Assert.All(reports, r => Assert.Equal(MifareCardLayout.TrailerAbsoluteBlock(r.Sector), r.AbsoluteBlock));
@@ -301,7 +351,7 @@ public class NfcCardConfigWriterTests
         var writer = new NfcCardConfigWriter(gateway);
         writer.Write(Reader, MifareCardType.Classic1K, Config);
         var key = NfcCardPasswordKey.Derive("hunter2");
-        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, Config, "hunter2");
+        writer.ProtectWithPassword(Reader, MifareCardType.Classic1K, "hunter2");
 
         // A escrita do trailer, por si só, não faz o Fake passar a exigir a nova chave (isso é
         // comportamento de hardware real) — este teste simula explicitamente esse efeito para

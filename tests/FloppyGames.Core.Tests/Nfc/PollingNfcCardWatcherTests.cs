@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FloppyGames.Core.Nfc;
 using Serilog.Core;
 
@@ -119,6 +120,51 @@ public class PollingNfcCardWatcherTests
         watcher.PollNow();
 
         Assert.Equal(1, removedCount);
+    }
+
+    /// <summary>
+    /// Regressão: com um <c>lock</c> simples, uma segunda chamada a <see cref="PollingNfcCardWatcher.PollNow"/>
+    /// enquanto um ciclo lento está em curso ficava bloqueada à espera — exatamente o que o
+    /// <see cref="Timer"/> interno faz a cada segundo. Com muitos ciclos lentos seguidos (ex. o
+    /// leitor Proxmark3 a re-tentar contra o lock exclusivo por porta COM partilhado com uma
+    /// gravação deliberada), isto empilhava centenas de threads do ThreadPool bloqueadas até
+    /// derrubar o processo inteiro sem log nenhum — verificado ao vivo. Este teste confirma que
+    /// uma segunda chamada agora devolve de imediato em vez de esperar.
+    /// </summary>
+    [Fact]
+    public async Task PollNow_CalledWhileAnotherCycleInProgress_ReturnsImmediatelyInsteadOfBlocking()
+    {
+        var readerDetector = new FakeNfcReaderDetector { Readers = { Reader } };
+        var probe = new BlockingPresenceProbe();
+        var watcher = new PollingNfcCardWatcher(readerDetector, probe, Logger.None);
+
+        var firstCallTask = Task.Run(() => watcher.PollNow());
+        Assert.True(probe.CallStarted.Wait(TimeSpan.FromSeconds(2)));
+
+        var stopwatch = Stopwatch.StartNew();
+        watcher.PollNow();
+        stopwatch.Stop();
+
+        probe.ReleaseGate.Set();
+        await firstCallTask.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.True(stopwatch.ElapsedMilliseconds < 500, $"PollNow devia devolver de imediato, mas demorou {stopwatch.ElapsedMilliseconds}ms.");
+    }
+
+    private sealed class BlockingPresenceProbe : INfcCardPresenceProbe
+    {
+        public ManualResetEventSlim CallStarted { get; } = new(false);
+
+        public ManualResetEventSlim ReleaseGate { get; } = new(false);
+
+        public bool TryGetPresentCard(string readerName, out string? uid, out MifareCardType cardType)
+        {
+            CallStarted.Set();
+            ReleaseGate.Wait(TimeSpan.FromSeconds(5));
+            uid = null;
+            cardType = MifareCardType.Unknown;
+            return false;
+        }
     }
 
     private sealed class ThrowingReaderDetector : INfcReaderDetector

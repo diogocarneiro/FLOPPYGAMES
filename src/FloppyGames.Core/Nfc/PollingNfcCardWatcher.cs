@@ -56,10 +56,26 @@ public sealed class PollingNfcCardWatcher : INfcCardWatcher
         _timer = null;
     }
 
-    /// <summary>Executa um ciclo de sondagem imediatamente. Público para testes determinísticos, tal como o watcher de disquetes.</summary>
+    /// <summary>
+    /// Executa um ciclo de sondagem imediatamente. Público para testes determinísticos, tal como o
+    /// watcher de disquetes. Usa <see cref="Lock.TryEnter()"/> em vez de <c>lock</c> simples: um
+    /// ciclo de sondagem pode ficar bloqueado vários segundos à espera do lock exclusivo por porta
+    /// COM (partilhado com <c>Pm3CommandRunner</c>) enquanto uma gravação deliberada está em curso
+    /// — mas o <see cref="Timer"/> continua a disparar um novo tick a cada segundo de qualquer
+    /// forma. Com <c>lock</c> simples, cada tick bloqueado consome uma nova thread do ThreadPool à
+    /// espera, e estas empilham-se (centenas de threads em poucos minutos) até esgotar o
+    /// ThreadPool e derrubar o processo inteiro sem exceção alguma passar por um try/catch da
+    /// aplicação — verificado ao vivo nesta sessão. Saltar um ciclo quando o anterior ainda não
+    /// acabou é seguro: o próximo tick, um segundo depois, tenta outra vez.
+    /// </summary>
     public void PollNow()
     {
-        lock (_pollLock)
+        if (!_pollLock.TryEnter())
+        {
+            return;
+        }
+
+        try
         {
             IReadOnlyList<string> readers;
             try
@@ -87,6 +103,10 @@ public sealed class PollingNfcCardWatcher : INfcCardWatcher
 
             _loggedNoReader = false;
             PollReaders(readers);
+        }
+        finally
+        {
+            _pollLock.Exit();
         }
     }
 

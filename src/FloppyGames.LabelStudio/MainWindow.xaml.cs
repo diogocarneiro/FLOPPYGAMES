@@ -38,7 +38,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _coverFetchCts;
     private NfcCardPresence? _presentNfcCard;
     private (NfcCardPresence Card, GameConfig Config)? _pendingNfcFormatConfig;
-    private (NfcCardPresence Card, GameConfig Config)? _pendingNfcProtectConfig;
+    private NfcCardPresence? _pendingNfcProtectCard;
     private bool _settingProtectCheckboxProgrammatically;
 
     public MainWindow()
@@ -620,12 +620,13 @@ public partial class MainWindow : Window
                 }
             }
 
-            await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, CreateNfcWriteProgress(), extraKeys));
+            var writeProgress = CreateNfcWriteProgress();
+            await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, writeProgress, extraKeys));
             WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
             _logger.Information(
                 "GAME.INI gravado no cartão NFC UID {Uid} para {Title} ({Platform}).", card.Uid, config.Title, config.Platform);
 
-            _pendingNfcProtectConfig = (card, config);
+            _pendingNfcProtectCard = card;
             ProtectCardHintText.Visibility = string.IsNullOrWhiteSpace(nfcCardPassword) ? Visibility.Visible : Visibility.Collapsed;
             ProtectCardPanel.Visibility = Visibility.Visible;
         }
@@ -661,8 +662,9 @@ public partial class MainWindow : Window
 
         try
         {
+            var formatProgress = CreateNfcWriteProgress();
             var formatted = await Task.Run(
-                () => _nfcCardWriter.WriteMagic(card.ReaderName, card.CardType, config, CreateNfcWriteProgress()));
+                () => _nfcCardWriter.WriteMagic(card.ReaderName, card.CardType, config, formatProgress));
 
             if (formatted)
             {
@@ -690,7 +692,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Reescreve o trailer do(s) setor(es) usados com a chave derivada da password configurada em
     /// Definições — ação explícita, opt-in por cartão, só disponível logo depois de uma gravação
-    /// normal ter tido sucesso (ver <see cref="_pendingNfcProtectConfig"/>). Ao contrário da
+    /// normal ter tido sucesso (ver <see cref="_pendingNfcProtectCard"/>). Ao contrário da
     /// gravação normal, um trailer mal escrito pode bloquear o setor permanentemente num cartão
     /// genuíno — por isso pede confirmação explícita antes de continuar.
     /// </summary>
@@ -701,7 +703,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_pendingNfcProtectConfig is not { } pending)
+        if (_pendingNfcProtectCard is not { } card)
         {
             SetProtectCheckboxChecked(false);
             return;
@@ -721,21 +723,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        var (card, config) = pending;
         SetNfcOperationInProgress(true);
         ClearNfcBlockLog();
 
         try
         {
             WriteStatusText.Text = Strings.LS_Nfc_Protecting;
+            var protectProgress = CreateNfcWriteProgress();
             var protectedCard = await Task.Run(
-                () => _nfcCardWriter.ProtectWithPassword(card.ReaderName, card.CardType, config, password, CreateNfcWriteProgress()));
+                () => _nfcCardWriter.ProtectWithPassword(card.ReaderName, card.CardType, password, protectProgress));
 
             if (protectedCard)
             {
                 WriteStatusText.Text = Strings.LS_Nfc_ProtectSuccess(card.Uid);
                 _logger.Information("Cartão NFC UID {Uid} protegido com palavra-passe.", card.Uid);
-                _pendingNfcProtectConfig = null;
+                _pendingNfcProtectCard = null;
             }
             else
             {
@@ -764,7 +766,7 @@ public partial class MainWindow : Window
 
     private void ResetProtectCardPanel()
     {
-        _pendingNfcProtectConfig = null;
+        _pendingNfcProtectCard = null;
         ProtectCardPanel.Visibility = Visibility.Collapsed;
         SetProtectCheckboxChecked(false);
     }
@@ -777,7 +779,7 @@ public partial class MainWindow : Window
         RefreshNfcReaderButton.IsEnabled = !inProgress;
 
         var hasPassword = !string.IsNullOrWhiteSpace(new AgentSettingsStore().Load().NfcCardPassword);
-        ProtectCardCheckBox.IsEnabled = !inProgress && _pendingNfcProtectConfig is not null && hasPassword;
+        ProtectCardCheckBox.IsEnabled = !inProgress && _pendingNfcProtectCard is not null && hasPassword;
     }
 
     private void ClearNfcBlockLog()
