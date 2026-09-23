@@ -2,16 +2,21 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
+using FloppyGames.Core;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
+using FloppyGames.Core.Settings;
+using FloppyGames.Core.Updates;
 
 namespace FloppyGames.Agent;
 
 /// <summary>
 /// Ícone de bandeja do sistema: reflete o estado atual (inativo / a lançar / jogo em execução)
 /// a partir dos eventos do <see cref="GameSessionManager"/>, e dá acesso rápido a logs,
-/// Label Studio, definições e saída.
+/// Label Studio, definições e saída. Também deteta atualizações disponíveis ao arrancar (ver
+/// <see cref="CheckForUpdatesOnStartupAsync"/>) e mostra-as aqui — a instalação em si fica na
+/// janela de Definições, para haver só um sítio com essa lógica.
 /// </summary>
 public sealed class TrayIconController : IDisposable
 {
@@ -19,6 +24,8 @@ public sealed class TrayIconController : IDisposable
     private readonly MainWindow _mainWindow;
     private readonly Dictionary<TrayIconState, Icon> _icons;
     private readonly Lock _stateLock = new();
+    private readonly GitHubReleaseUpdateChecker _updateChecker = new();
+    private readonly ToolStripMenuItem _updateMenuItem;
     private int _activeLaunches;
     private int _activeSessions;
 
@@ -27,7 +34,12 @@ public sealed class TrayIconController : IDisposable
         _mainWindow = mainWindow;
         _icons = Enum.GetValues<TrayIconState>().ToDictionary(state => state, TrayIconFactory.Create);
 
+        // Só aparece depois de CheckForUpdatesOnStartupAsync encontrar uma versão nova — nunca
+        // ocupa espaço no menu quando já se está atualizado ou a verificação está desligada.
+        _updateMenuItem = new ToolStripMenuItem(string.Empty, null, (_, _) => ShowSettings()) { Visible = false };
+
         var menu = new ContextMenuStrip();
+        menu.Items.Add(_updateMenuItem);
         menu.Items.Add(Strings.Tray_OpenFloppyGames, null, (_, _) => ShowMainWindow());
         menu.Items.Add(Strings.Tray_OpenLogsFolder, null, (_, _) => OpenLogsFolder());
         menu.Items.Add(Strings.Tray_OpenLabelStudio, null, (_, _) => LabelStudioLauncher.TryLaunch());
@@ -43,6 +55,7 @@ public sealed class TrayIconController : IDisposable
             ContextMenuStrip = menu,
         };
         _notifyIcon.DoubleClick += (_, _) => ShowMainWindow();
+        _notifyIcon.BalloonTipClicked += (_, _) => ShowSettings();
 
         sessionManager.LaunchStarting += (_, _) => OnLaunchStarting();
         sessionManager.GameLaunched += (_, _) => OnLaunchSettled(succeeded: true);
@@ -51,6 +64,41 @@ public sealed class TrayIconController : IDisposable
     }
 
     public event EventHandler? ExitRequested;
+
+    /// <summary>A atualização encontrada por <see cref="CheckForUpdatesOnStartupAsync"/>, se alguma — lida pela janela de Definições para não repetir a verificação.</summary>
+    public AvailableUpdate? PendingUpdate { get; private set; }
+
+    /// <summary>Permite à janela de Definições pedir a saída limpa do Agent depois de lançar o instalador de uma atualização.</summary>
+    public void RequestExit() => ExitRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
+    /// Verifica a existência de uma versão nova ao arrancar, se a opção estiver ativa nas
+    /// Definições — nunca bloqueia o arranque do Agent (é chamada em segundo plano, sem esperar
+    /// por ela) nem incomoda se falhar (sem ligação, GitHub em baixo): fica só sem o aviso.
+    /// </summary>
+    public async Task CheckForUpdatesOnStartupAsync()
+    {
+        if (!new AgentSettingsStore().Load().CheckForUpdatesEnabled)
+        {
+            return;
+        }
+
+        // Dá tempo ao resto do arranque (vigilância de mídia, pilha NFC) sem competir por rede/CPU.
+        await Task.Delay(TimeSpan.FromSeconds(5));
+
+        var result = await _updateChecker.CheckAsync(AppInfo.Version, CancellationToken.None);
+        if (result.Status != UpdateCheckStatus.UpdateAvailable)
+        {
+            return;
+        }
+
+        PendingUpdate = result.Update;
+        var version = result.Update!.Version.ToString();
+
+        _updateMenuItem.Text = Strings.Tray_UpdateAvailable(version);
+        _updateMenuItem.Visible = true;
+        _notifyIcon.ShowBalloonTip(10_000, Strings.Tray_UpdateBalloonTitle, Strings.Tray_UpdateBalloonText(version), ToolTipIcon.Info);
+    }
 
     private void ShowMainWindow() => _mainWindow.Dispatcher.Invoke(() =>
     {
@@ -61,7 +109,7 @@ public sealed class TrayIconController : IDisposable
 
     private void ShowSettings() => _mainWindow.Dispatcher.Invoke(() =>
     {
-        var settings = new SettingsWindow { Owner = _mainWindow.IsVisible ? _mainWindow : null };
+        var settings = new SettingsWindow(this) { Owner = _mainWindow.IsVisible ? _mainWindow : null };
         settings.ShowDialog();
     });
 

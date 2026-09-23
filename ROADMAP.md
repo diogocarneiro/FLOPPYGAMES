@@ -81,16 +81,26 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 - [x] Desinstalação limpa: remove ficheiros, atalhos e a entrada de arranque automático (`CurUninstallStepChanged`, cobre qualquer origem da entrada — tarefa, `/configure`, ou Definições do Agent). Nunca toca em suportes amovíveis, e preserva deliberadamente os logs do utilizador em `%LOCALAPPDATA%\FloppyGames\logs`.
 - [ ] Assinatura do executável (*code signing*) — exige um certificado adquirido; fora do alcance deste ambiente. Sem isto, o Windows SmartScreen vai avisar na primeira execução — aceitável para um projeto pessoal, mas a documentar para quem for distribuir mais largamente.
 - [x] Pipeline de release (GitHub Actions, `.github/workflows/release.yml`): cada push para o
-  `main` corre os testes, compila o instalador e publica-o numa GitHub Release `vX.Y.N` (`X.Y` de
-  `Directory.Build.props`, `N` o número do run); uma tag `vX.Y.Z` enviada à mão publica exatamente
-  essa versão. A versão chega ao instalador e ao rodapé das apps (`build.ps1 -Version`) sem editar
-  ficheiros à mão. Também corre à mão, deixando só o instalador como artefacto. Validado localmente com os mesmos
-  comandos do workflow (testes em Release, `build.ps1 -Version 9.9.9` → instalador e apps a 9.9.9) —
-  o primeiro run no GitHub só acontece com o primeiro push de uma tag. Ao preparar o pipeline
-  descobriu-se que o `proxmark3.exe` incluído dependia de 9 DLLs do MSYS2 que só existiam no PC de
-  desenvolvimento (fora dele terminava com `0xC0000135`, "DLL not found" — o suporte Proxmark3
-  falhava em qualquer outra instalação); passaram a ser incluídos ao lado dele e no instalador, com
-  as licenças em `tools/proxmark3/NOTICE.md`.
+  `main` corre os testes, compila o instalador e publica-o numa GitHub Release com a versão que
+  estiver em `<Version>` de `Directory.Build.props` nesse commit; uma tag `vX.Y.Z` enviada à mão
+  publica exatamente essa versão em vez disso. A versão chega ao instalador e ao rodapé das apps
+  (`build.ps1 -Version`) sem editar ficheiros à mão. Também corre à mão, deixando só o instalador
+  como artefacto. Validado localmente com os mesmos comandos do workflow (testes em Release,
+  `build.ps1 -Version 9.9.9` → instalador e apps a 9.9.9) — o primeiro run automático no GitHub só
+  acontece com o próximo push para o `main`. Ao preparar o pipeline descobriu-se que o
+  `proxmark3.exe` incluído dependia de 9 DLLs do MSYS2 que só existiam no PC de desenvolvimento
+  (fora dele terminava com `0xC0000135`, "DLL not found" — o suporte Proxmark3 falhava em qualquer
+  outra instalação); passaram a ser incluídos ao lado dele e no instalador, com as licenças em
+  `tools/proxmark3/NOTICE.md`.
+- [x] Versão automática por commit (`.githooks/pre-commit`): sobe o *patch* de `<Version>` em
+  `Directory.Build.props` a cada `git commit` local e inclui essa alteração no próprio commit — a
+  release do GitHub Actions acima publica sempre essa versão, sem passo manual nenhum entre um
+  commit normal e uma release. Ativa-se uma vez por clone com `git config core.hooksPath
+  .githooks` (documentado no [README.md](README.md#desenvolvimento-versão-automática)); sem esse
+  passo, os commits continuam a funcionar normalmente, só sem subir a versão sozinhos. **Testado**
+  num repositório Git isolado (não no próprio FloppyGames, para não sujar o histórico real): o
+  primeiro commit já bumpou `0.1.0` → `0.1.1`, um segundo `0.1.1` → `0.1.2`, e `git show --stat`
+  confirmou que `Directory.Build.props` fica sempre incluído no mesmo commit que o disparou.
 
 **Duas armadilhas reais do Inno Setup encontradas e corrigidas ao testar** (detalhadas em [src/FloppyGames.Installer/README.md](src/FloppyGames.Installer/README.md)):
 - A constante `{app}` não está disponível dentro de `InitializeSetup` (só depois da página de escolha de pasta) — `/configure` precisa do caminho de instalação antes disso, por isso passou a lê-lo da própria chave de desinstalação que o Inno já escreve, em vez de `{app}`.
@@ -160,6 +170,25 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   jogos instalados nesta máquina (4 Steam, 3 Epic, 2 GOG — todos com capa).
   Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
+- [x] Verificação de atualizações a partir das releases do GitHub (`GitHubReleaseUpdateChecker`, em
+  `Core/Updates/`): lê `GET /repos/diogocarneiro/FLOPPYGAMES/releases/latest` (API pública, sem
+  autenticação — só funciona com o repositório público, ver nota abaixo), compara com a versão
+  instalada (`AppInfo.Version`) e, se houver uma mais recente, descarrega o
+  `FloppyGamesSetup.exe` anexado com progresso. O Agent verifica sozinho ao arrancar (opt-out em
+  Definições, ligado por omissão, com 5s de atraso para não competir com o resto do arranque) —
+  se encontrar uma versão nova, mostra-a no menu da bandeja e num balão; clicar em qualquer um dos
+  dois abre as Definições, onde "Transferir e instalar" descarrega o instalador, lança-o
+  normalmente (assistente visível) e fecha o Agent de forma limpa para o instalador poder
+  substituir o próprio executável em execução. **Verificado ao vivo** contra a API real do GitHub
+  (comparação de versões e download completo de ~103 MB com progresso corretos) e a UI de
+  Definições testada com o código de produção real (instanciado fora do Agent, sem tocar no leitor
+  NFC) nos dois estados — "já está atualizado" e "versão nova disponível" (com o botão "Transferir
+  e instalar" a aparecer só nesse segundo caso). O clique final em "Instalar" (que abriria mesmo o
+  assistente do Inno Setup) não foi acionado de propósito.
+  - **Pré-requisito descoberto ao construir isto**: a API `releases/latest` devolve 404 para um
+    repositório privado, mesmo pedindo a própria release — não há forma de o Agent verificar
+    atualizações sem autenticação (que não se pode embutir com segurança numa app distribuída) a
+    não ser tornando o repositório público. Feito.
 - [x] Suporte a cartões NFC/RFID (Mifare Classic 1K/4K) como gatilho alternativo à disquete/pen,
   com **dois backends** compostos automaticamente (`CompositeNfcBackend`, em `Core/Nfc/`): um
   leitor PC/SC genérico (ex. ACR122U) e um **Proxmark3**. O Label Studio deteta o(s) leitor(es)

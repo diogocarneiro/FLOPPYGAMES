@@ -37,4 +37,11 @@ public sealed record AgentSettings
     /// opção de proteger um cartão no Label Studio fica desativada.
     /// </summary>
     public string? NfcCardPassword { get; init; }
+
+    /// <summary>
+    /// Se o Agent deve procurar por uma versão mais recente na página de releases do GitHub ao
+    /// arrancar (ligado por omissão — só lê a API pública do GitHub, nunca envia nada). Ver
+    /// <c>GitHubReleaseUpdateChecker</c>.
+    /// </summary>
+    public bool CheckForUpdatesEnabled { get; init; } = true;
 }

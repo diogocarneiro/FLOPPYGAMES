@@ -34,6 +34,18 @@ public class AgentSettingsStoreTests : IDisposable
         Assert.False(settings.EpicEnabled);
         Assert.False(settings.GogEnabled);
         Assert.False(settings.NfcEnabled);
+        Assert.True(settings.CheckForUpdatesEnabled);
+    }
+
+    [Fact]
+    public void Save_ThenLoad_RoundTripsCheckForUpdatesEnabled()
+    {
+        var store = new AgentSettingsStore(_settingsPath);
+
+        store.Save(new AgentSettings { CheckForUpdatesEnabled = false });
+        var settings = store.Load();
+
+        Assert.False(settings.CheckForUpdatesEnabled);
     }
 
     [Fact]

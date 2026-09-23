@@ -1,0 +1,32 @@
+#!/bin/sh
+# Sobe o PATCH de <Version> em Directory.Build.props a cada commit, e inclui essa alteração no
+# mesmo commit (a versão nunca fica "por bumpar" num commit separado). É essa versão que aparece
+# no rodapé do Agent e do Label Studio (ver src/FloppyGames.Core/AppInfo.cs) e que o pipeline de
+# release publica sem mais nada a mudar (ver .github/workflows/release.yml).
+#
+# Só corre se ativado localmente com:
+#   git config core.hooksPath .githooks
+# (é um passo manual de propósito — hooks não são copiados automaticamente por um "git clone" por
+# razões de segurança do próprio Git).
+
+set -e
+
+props="Directory.Build.props"
+if [ ! -f "$props" ]; then
+    exit 0
+fi
+
+current=$(grep -o '<Version>[0-9]*\.[0-9]*\.[0-9]*</Version>' "$props" | head -1 | sed -E 's/<Version>(.*)<\/Version>/\1/')
+if [ -z "$current" ]; then
+    exit 0
+fi
+
+major=$(echo "$current" | cut -d. -f1)
+minor=$(echo "$current" | cut -d. -f2)
+patch=$(echo "$current" | cut -d. -f3)
+next="$major.$minor.$((patch + 1))"
+
+sed -i "s/<Version>$current<\/Version>/<Version>$next<\/Version>/" "$props"
+git add "$props"
+
+echo "pre-commit: versão $current -> $next ($props)"

@@ -1,11 +1,15 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Navigation;
+using FloppyGames.Core;
 using FloppyGames.Core.Localization;
 using FloppyGames.Core.Logging;
 using FloppyGames.Core.Settings;
 using FloppyGames.Core.Startup;
+using FloppyGames.Core.Updates;
 
 namespace FloppyGames.Agent;
 
@@ -13,11 +17,15 @@ public partial class SettingsWindow : Window
 {
     private readonly AutostartManager _autostartManager;
     private readonly AgentSettingsStore _settingsStore;
+    private readonly TrayIconController _trayIconController;
+    private readonly GitHubReleaseUpdateChecker _updateChecker = new();
     private readonly bool _initializing;
+    private AvailableUpdate? _pendingUpdate;
 
-    public SettingsWindow()
+    public SettingsWindow(TrayIconController trayIconController)
     {
         InitializeComponent();
+        _trayIconController = trayIconController;
 
         AutostartCheckBox.Content = Strings.Settings_Autostart;
         FloppySoundCheckBox.Content = Strings.Settings_FloppySound;
@@ -31,6 +39,11 @@ public partial class SettingsWindow : Window
         NfcCardPasswordLabelText.Text = Strings.Settings_NfcCardPasswordLabel;
         NfcCardPasswordDescriptionText.Text = Strings.Settings_NfcCardPasswordDescription;
         SaveNfcCardPasswordButton.Content = Strings.Settings_SaveButton;
+        UpdatesLabelText.Text = Strings.Settings_UpdatesLabel;
+        UpdatesDescriptionText.Text = Strings.Settings_UpdatesDescription;
+        CheckForUpdatesCheckBox.Content = Strings.Settings_CheckForUpdatesCheckbox;
+        CheckForUpdatesNowButton.Content = Strings.Settings_CheckForUpdatesNowButton;
+        InstallUpdateButton.Content = Strings.Settings_InstallUpdateButton;
         AboutLabelText.Text = Strings.Settings_AboutLabel;
         AboutDescriptionText.Text = Strings.Settings_AboutDescription;
         AboutCreatedByText.Text = Strings.Settings_AboutCreatedBy;
@@ -63,7 +76,15 @@ public partial class SettingsWindow : Window
         EpicEnabledCheckBox.IsChecked = settings.EpicEnabled;
         GogEnabledCheckBox.IsChecked = settings.GogEnabled;
         NfcEnabledCheckBox.IsChecked = settings.NfcEnabled;
+        CheckForUpdatesCheckBox.IsChecked = settings.CheckForUpdatesEnabled;
         _initializing = false;
+
+        // Se o TrayIconController já encontrou uma atualização ao arrancar, mostra-a de imediato
+        // em vez de obrigar a clicar em "Verificar agora" outra vez.
+        if (_trayIconController.PendingUpdate is { } preloaded)
+        {
+            ShowUpdateAvailable(preloaded);
+        }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e) => WindowPlacement.FitToWorkArea(this);
@@ -111,6 +132,89 @@ public partial class SettingsWindow : Window
         StatusText.Text = string.IsNullOrWhiteSpace(password)
             ? Strings.Settings_NfcCardPasswordRemoved
             : Strings.Settings_NfcCardPasswordSaved;
+    }
+
+    private void OnCheckForUpdatesToggled(object sender, RoutedEventArgs e)
+    {
+        if (_initializing)
+        {
+            return;
+        }
+
+        var current = _settingsStore.Load();
+        _settingsStore.Save(current with { CheckForUpdatesEnabled = CheckForUpdatesCheckBox.IsChecked == true });
+        StatusText.Text = CheckForUpdatesCheckBox.IsChecked == true
+            ? Strings.Settings_CheckForUpdatesEnabledOn
+            : Strings.Settings_CheckForUpdatesEnabledOff;
+    }
+
+    private async void OnCheckForUpdatesNowClicked(object sender, RoutedEventArgs e)
+    {
+        CheckForUpdatesNowButton.IsEnabled = false;
+        InstallUpdateButton.Visibility = Visibility.Collapsed;
+        _pendingUpdate = null;
+        UpdateStatusText.Text = Strings.Settings_UpdateStatusChecking;
+
+        try
+        {
+            var result = await _updateChecker.CheckAsync(AppInfo.Version, CancellationToken.None);
+            switch (result.Status)
+            {
+                case UpdateCheckStatus.UpdateAvailable:
+                    ShowUpdateAvailable(result.Update!);
+                    break;
+                case UpdateCheckStatus.UpToDate:
+                    UpdateStatusText.Text = Strings.Settings_UpdateStatusUpToDate(AppInfo.Version);
+                    break;
+                default:
+                    UpdateStatusText.Text = Strings.Settings_UpdateStatusFailed;
+                    break;
+            }
+        }
+        finally
+        {
+            CheckForUpdatesNowButton.IsEnabled = true;
+        }
+    }
+
+    private void ShowUpdateAvailable(AvailableUpdate update)
+    {
+        _pendingUpdate = update;
+        UpdateStatusText.Text = Strings.Settings_UpdateStatusAvailable(update.Version.ToString());
+        InstallUpdateButton.Visibility = update.InstallerUrl is not null ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Descarrega o instalador anexado à release e lança-o normalmente (assistente visível, tal
+    /// como uma instalação manual) — depois pede ao Agent para se fechar de forma limpa, porque o
+    /// instalador precisa de substituir o próprio executável em execução.
+    /// </summary>
+    private async void OnInstallUpdateClicked(object sender, RoutedEventArgs e)
+    {
+        if (_pendingUpdate is null)
+        {
+            return;
+        }
+
+        InstallUpdateButton.IsEnabled = false;
+        CheckForUpdatesNowButton.IsEnabled = false;
+
+        try
+        {
+            var progress = new Progress<double>(p => UpdateStatusText.Text = Strings.Settings_UpdateDownloading((int)(p * 100)));
+            var installerPath = await _updateChecker.DownloadInstallerAsync(_pendingUpdate, progress, CancellationToken.None);
+
+            Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            UpdateStatusText.Text = Strings.Settings_UpdateInstallStarting;
+            _trayIconController.RequestExit();
+            Close();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or Win32Exception)
+        {
+            UpdateStatusText.Text = Strings.Settings_UpdateDownloadFailed;
+            InstallUpdateButton.IsEnabled = true;
+            CheckForUpdatesNowButton.IsEnabled = true;
+        }
     }
 
     private void OnFloppySoundToggled(object sender, RoutedEventArgs e)

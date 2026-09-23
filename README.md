@@ -325,6 +325,21 @@ Ver [ROADMAP.md](ROADMAP.md) para o plano de desenvolvimento faseado.
 
 Este é um projeto pessoal orientado a hobby/nostalgia. Sugestões e *pull requests* são bem-vindos — abre uma *issue* antes de propor mudanças estruturais grandes.
 
+### Desenvolvimento: versão automática
+
+`<Version>` em `Directory.Build.props` (mostrada no rodapé do Agent e do Label Studio, e usada pelo
+pipeline de release — ver [`src/FloppyGames.Installer/README.md`](src/FloppyGames.Installer/README.md#release-automático-github-actions))
+sobe sozinha a cada commit local, através de um *hook* `pre-commit` ([`.githooks/pre-commit`](.githooks/pre-commit))
+que soma 1 ao número de patch (`0.1.0` → `0.1.1` → ...) e inclui essa alteração no próprio commit.
+Por segurança, o Git não ativa *hooks* automaticamente ao clonar — depois de clonar o repositório,
+ativa-o uma vez com:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Sem este passo, os commits continuam a funcionar normalmente, só sem subir a versão sozinhos.
+
 ## Licença
 
 Distribuído sob licença MIT — ver [LICENSE.md](LICENSE.md).

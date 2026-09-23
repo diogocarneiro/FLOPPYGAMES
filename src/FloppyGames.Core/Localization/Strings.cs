@@ -89,6 +89,20 @@ public static class Strings
     public static string Settings_NfcCardPasswordDescription => Get("Settings_NfcCardPasswordDescription");
     public static string Settings_NfcCardPasswordSaved => Get("Settings_NfcCardPasswordSaved");
     public static string Settings_NfcCardPasswordRemoved => Get("Settings_NfcCardPasswordRemoved");
+    public static string Settings_UpdatesLabel => Get("Settings_UpdatesLabel");
+    public static string Settings_UpdatesDescription => Get("Settings_UpdatesDescription");
+    public static string Settings_CheckForUpdatesCheckbox => Get("Settings_CheckForUpdatesCheckbox");
+    public static string Settings_CheckForUpdatesNowButton => Get("Settings_CheckForUpdatesNowButton");
+    public static string Settings_CheckForUpdatesEnabledOn => Get("Settings_CheckForUpdatesEnabledOn");
+    public static string Settings_CheckForUpdatesEnabledOff => Get("Settings_CheckForUpdatesEnabledOff");
+    public static string Settings_UpdateStatusChecking => Get("Settings_UpdateStatusChecking");
+    public static string Settings_UpdateStatusUpToDate(string version) => Format("Settings_UpdateStatusUpToDate", version);
+    public static string Settings_UpdateStatusAvailable(string version) => Format("Settings_UpdateStatusAvailable", version);
+    public static string Settings_UpdateStatusFailed => Get("Settings_UpdateStatusFailed");
+    public static string Settings_InstallUpdateButton => Get("Settings_InstallUpdateButton");
+    public static string Settings_UpdateDownloading(int percent) => Format("Settings_UpdateDownloading", percent);
+    public static string Settings_UpdateDownloadFailed => Get("Settings_UpdateDownloadFailed");
+    public static string Settings_UpdateInstallStarting => Get("Settings_UpdateInstallStarting");
     public static string Settings_AboutLabel => Get("Settings_AboutLabel");
     public static string Settings_AboutDescription => Get("Settings_AboutDescription");
     public static string Settings_AboutCreatedBy => Get("Settings_AboutCreatedBy");
@@ -103,6 +117,9 @@ public static class Strings
     public static string Tray_Launching => Get("Tray_Launching");
     public static string Tray_OneRunning => Get("Tray_OneRunning");
     public static string Tray_ManyRunning(int count) => Format("Tray_ManyRunning", count);
+    public static string Tray_UpdateAvailable(string version) => Format("Tray_UpdateAvailable", version);
+    public static string Tray_UpdateBalloonTitle => Get("Tray_UpdateBalloonTitle");
+    public static string Tray_UpdateBalloonText(string version) => Format("Tray_UpdateBalloonText", version);
 
     // LabelStudioLauncher
     public static string LabelStudioLauncher_NotInstalled => Get("LabelStudioLauncher_NotInstalled");

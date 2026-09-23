@@ -19,6 +19,8 @@ public partial class App : System.Windows.Application
         _trayIcon.ExitRequested += OnExitRequested;
 
         _mainWindow.Show();
+
+        _ = _trayIcon.CheckForUpdatesOnStartupAsync();
     }
 
     private void OnExitRequested(object? sender, EventArgs e)

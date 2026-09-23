@@ -1,10 +1,12 @@
 # Pipeline de release: compila, testa, empacota o FloppyGames e publica o instalador numa GitHub
 # Release.
 #
-#  - Cada push para o main  -> release automática vX.Y.N, com X.Y vindo de <Version> em
-#    Directory.Build.props e N o número do run deste workflow (sempre crescente). A tag é criada
-#    pela própria release, no commit do push.
-#  - Tag vX.Y.Z enviada à mão -> release com exatamente essa versão (para escolher o número):
+#  - Cada push para o main -> release automática com a versão de <Version> em
+#    Directory.Build.props, tal como está nesse commit. Essa versão já vem a subir sozinha a cada
+#    commit local (hook .githooks/pre-commit, ver README.md "Desenvolvimento") — nada a fazer aqui
+#    além de publicar o que já está no repositório.
+#  - Tag vX.Y.Z enviada à mão -> release com exatamente essa versão, ignorando
+#    Directory.Build.props (para escolher o número à mão, ex. para saltar de série):
 #      git tag v0.2.0  &&  git push origin v0.2.0
 #  - Correr à mão (Actions -> Release -> Run workflow) -> só deixa o instalador como artefacto do
 #    run, sem criar release.
@@ -45,8 +47,7 @@ jobs:
             $version = $env:GITHUB_REF_NAME.TrimStart('v')
           } else {
             [xml]$props = Get-Content Directory.Build.props
-            $base = [version](@($props.Project.PropertyGroup.Version) | Where-Object { $_ } | Select-Object -First 1)
-            $version = "$($base.Major).$($base.Minor).$env:GITHUB_RUN_NUMBER"
+            $version = @($props.Project.PropertyGroup.Version) | Where-Object { $_ } | Select-Object -First 1
           }
           Write-Host "Versão: $version"
           "version=$version" >> $env:GITHUB_OUTPUT

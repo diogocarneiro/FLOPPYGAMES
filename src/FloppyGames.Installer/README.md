@@ -23,9 +23,10 @@ fica essa no instalador e no rodapé das duas apps.
 instalador (`build.ps1 -Version`) e publica-o numa GitHub Release, com notas geradas a partir dos
 commits:
 
-- **Cada push para o `main`** → release automática `vX.Y.N`: `X.Y` vem de `<Version>` em
-  `Directory.Build.props` (hoje `0.1`) e `N` é o número do run, sempre crescente. Para mudar de
-  série (ex. passar a `0.2.x`), basta alterar `<Version>` para `0.2.0`.
+- **Cada push para o `main`** → release automática com a versão que estiver em `<Version>` em
+  `Directory.Build.props` nesse commit. Essa versão já sobe sozinha a cada `git commit` local — ver
+  "Desenvolvimento: versão automática" no [README.md](../../README.md) da raiz — por isso não há
+  nada a fazer manualmente para lançar uma nova release: basta fazer commit e push.
 - **Tag `vX.Y.Z` enviada à mão** → release com exatamente essa versão:
 
   ```powershell

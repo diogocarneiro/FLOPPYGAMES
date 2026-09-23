@@ -63,6 +63,19 @@
 
         <Rectangle Height="1" Fill="#FFDDDDDD" Margin="0,0,0,16" />
 
+        <TextBlock x:Name="UpdatesLabelText" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock x:Name="UpdatesDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8" />
+        <CheckBox x:Name="CheckForUpdatesCheckBox" Margin="0,0,0,8"
+                  Checked="OnCheckForUpdatesToggled" Unchecked="OnCheckForUpdatesToggled" />
+        <DockPanel Margin="0,0,0,8">
+            <Button x:Name="CheckForUpdatesNowButton" DockPanel.Dock="Right" Width="110" Click="OnCheckForUpdatesNowClicked" />
+            <TextBlock x:Name="UpdateStatusText" VerticalAlignment="Center" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,8,0" />
+        </DockPanel>
+        <Button x:Name="InstallUpdateButton" HorizontalAlignment="Left" Padding="10,4" Visibility="Collapsed"
+                Margin="0,0,0,20" Click="OnInstallUpdateClicked" />
+
+        <Rectangle Height="1" Fill="#FFDDDDDD" Margin="0,0,0,16" />
+
         <TextBlock x:Name="AboutLabelText" FontWeight="Bold" Margin="0,0,0,4" />
         <TextBlock x:Name="AboutDescriptionText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8" />
         <TextBlock x:Name="AboutCreatedByText" Margin="0,0,0,2" />
