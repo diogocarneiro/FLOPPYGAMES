@@ -67,6 +67,10 @@ public sealed class NfcGameMediaService : IDisposable
                     _logger.Debug("Cartão NFC de tipo não suportado em UID {Uid} — ignorado.", presence.Uid);
                     break;
 
+                case NfcCardScanStatus.Empty:
+                    _logger.Debug("Cartão NFC em branco em UID {Uid} — ignorado.", presence.Uid);
+                    break;
+
                 case NfcCardScanStatus.CorruptOrEmptyData:
                     _logger.Debug("Cartão NFC sem dados FloppyGames em UID {Uid} — ignorado.", presence.Uid);
                     break;

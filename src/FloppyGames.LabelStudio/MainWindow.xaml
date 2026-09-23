@@ -115,7 +115,13 @@
                         <Button x:Name="RefreshNfcReaderButton" DockPanel.Dock="Right" Width="80" Click="OnRefreshNfcReaderClicked" />
                         <TextBlock x:Name="NfcReaderStatusText" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0" />
                     </DockPanel>
-                    <TextBlock x:Name="NfcCardStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,12" />
+                    <TextBlock x:Name="NfcCardStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,4" />
+                    <DockPanel Margin="0,0,0,12">
+                        <Button x:Name="EraseCardButton" DockPanel.Dock="Right" Padding="10,2" Visibility="Collapsed"
+                                Click="OnEraseCardClicked" />
+                        <TextBlock x:Name="NfcCardContentText" FontWeight="SemiBold" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                    </DockPanel>
                 </StackPanel>
 
                 <Button x:Name="WriteButton" Height="32" Click="OnWriteClicked" />

@@ -155,6 +155,19 @@
   <data name="LS_Nfc_CardDetected" xml:space="preserve"><value>Carta rilevata — UID {0} · {1}</value></data>
   <data name="LS_Nfc_CardTypeUnknown" xml:space="preserve"><value>tipo sconosciuto / non supportato</value></data>
   <data name="LS_Drive_WriteProgress" xml:space="preserve"><value>Scrittura sul supporto... {0}%</value></data>
+  <data name="LS_Nfc_ReadingCard" xml:space="preserve"><value>Lettura del contenuto della scheda...</value></data>
+  <data name="LS_Nfc_CardContentGame" xml:space="preserve"><value>Gioco registrato sulla scheda: {0} ({1})</value></data>
+  <data name="LS_Nfc_CardContentEmpty" xml:space="preserve"><value>Scheda vuota — pronta per la scrittura.</value></data>
+  <data name="LS_Nfc_CardContentLocked" xml:space="preserve"><value>Scheda protetta con una chiave sconosciuta — impossibile leggerne il contenuto.</value></data>
+  <data name="LS_Nfc_CardContentInvalid" xml:space="preserve"><value>La scheda contiene dati, ma non è un gioco FloppyGames valido.</value></data>
+  <data name="LS_Nfc_CardContentReadFailed" xml:space="preserve"><value>Impossibile leggere la scheda — prova a riposizionarla sul lettore.</value></data>
+  <data name="LS_Nfc_EraseButton" xml:space="preserve"><value>Formatta scheda (cancella gioco)</value></data>
+  <data name="LS_Nfc_EraseConfirm" xml:space="preserve"><value>Questo cancella tutto il contenuto della scheda e ripristina le chiavi di fabbrica, per poterla riprogrammare con un altro gioco. L'UID della scheda non cambia. Continuare?</value></data>
+  <data name="LS_Nfc_EraseMagicConfirm" xml:space="preserve"><value>La scheda è protetta con una chiave sconosciuta. Provare a formattarla in modalità "magic" (funziona solo sulle schede clone Gen1a/Gen2)?</value></data>
+  <data name="LS_Nfc_Erasing" xml:space="preserve"><value>Formattazione della scheda...</value></data>
+  <data name="LS_Nfc_EraseSuccess" xml:space="preserve"><value>Scheda formattata — scegli un gioco e scrivilo per riprogrammarla.</value></data>
+  <data name="LS_Nfc_EraseFailed" xml:space="preserve"><value>Impossibile formattare la scheda.</value></data>
+  <data name="LS_Nfc_ReplaceGameConfirm" xml:space="preserve"><value>La scheda contiene già "{0}". Sostituirlo con questo gioco?</value></data>
   <data name="LS_Nfc_RefreshReaderButton" xml:space="preserve"><value>Aggiorna</value></data>
   <data name="LS_Nfc_WriteSuccess" xml:space="preserve"><value>Carta pronta: "{0}" scritto (UID {1}).</value></data>
   <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Scrittura sulla carta non riuscita — vedi i log.</value></data>

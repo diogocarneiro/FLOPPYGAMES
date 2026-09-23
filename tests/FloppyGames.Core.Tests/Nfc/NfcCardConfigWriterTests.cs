@@ -397,4 +397,77 @@ public class NfcCardConfigWriterTests
         Assert.Equal(NfcCardScanStatus.AuthenticationFailed, readWithoutKey.Status);
         Assert.Equal(NfcCardScanStatus.Valid, readWithKey.Status);
     }
+
+    [Fact]
+    public void Format_CardWithGame_LeavesCardEmpty()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+        writer.Write(Reader, MifareCardType.Classic1K, Config with { Description = new string('X', 300) });
+
+        var formatted = writer.Format(Reader, MifareCardType.Classic1K);
+
+        Assert.True(formatted);
+        Assert.Equal(NfcCardScanStatus.Empty, new NfcCardConfigReader(gateway).Read(Reader, "04A1B2C3", MifareCardType.Classic1K).Status);
+        Assert.All(
+            MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K),
+            b => Assert.Equal(new byte[16], gateway.ReadBlock(Reader, b.AbsoluteBlock)));
+    }
+
+    [Fact]
+    public void Format_FactoryKeyedCard_NeverRewritesTrailers()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.Format(Reader, MifareCardType.Classic1K);
+
+        Assert.DoesNotContain(gateway.WriteCalls, call => (call.AbsoluteBlock + 1) % 4 == 0);
+        Assert.DoesNotContain(gateway.WriteCalls, call => call.AbsoluteBlock == 0);
+    }
+
+    [Fact]
+    public void Format_PasswordProtectedSectors_RestoresFactoryTrailerOnlyThere()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var passwordKey = NfcCardPasswordKey.Derive("hunter2");
+        gateway.RequireKeyForSector(0, passwordKey);
+        gateway.RequireKeyForSector(4, passwordKey);
+        var writer = new NfcCardConfigWriter(gateway);
+
+        var formatted = writer.Format(Reader, MifareCardType.Classic1K, [passwordKey]);
+
+        Assert.True(formatted);
+        var trailerWrites = gateway.WriteCalls.Where(c => (c.AbsoluteBlock + 1) % 4 == 0).ToList();
+        Assert.Equal([MifareCardLayout.TrailerAbsoluteBlock(0), MifareCardLayout.TrailerAbsoluteBlock(4)], trailerWrites.Select(c => c.AbsoluteBlock));
+        byte[] factoryTrailer = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x07, 0x80, 0x69, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        Assert.All(trailerWrites, c => Assert.Equal(factoryTrailer, c.Data));
+    }
+
+    [Fact]
+    public void Format_UnknownKeyOnSomeSector_ReturnsFalseWithoutWriting()
+    {
+        var gateway = new FakeMifareCardGateway();
+        gateway.RequireKeyForSector(2, [1, 2, 3, 4, 5, 6]);
+        var writer = new NfcCardConfigWriter(gateway);
+
+        var formatted = writer.Format(Reader, MifareCardType.Classic1K, [NfcCardPasswordKey.Derive("hunter2")]);
+
+        Assert.False(formatted);
+        Assert.Empty(gateway.WriteCalls);
+    }
+
+    [Fact]
+    public void FormatMagic_WritesZeroDataAndFactoryTrailersEverywhere_NeverBlock0()
+    {
+        var gateway = new FakeMifareCardGateway { SupportsMagicWrite = true };
+        var writer = new NfcCardConfigWriter(gateway);
+
+        var formatted = writer.FormatMagic(Reader, MifareCardType.Classic1K);
+
+        Assert.True(formatted);
+        Assert.DoesNotContain(gateway.MagicWriteCalls, c => c.AbsoluteBlock == 0);
+        Assert.Equal(16, gateway.MagicWriteCalls.Count(c => (c.AbsoluteBlock + 1) % 4 == 0));
+        Assert.Equal(MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K).Count + 16, gateway.MagicWriteCalls.Count);
+    }
 }

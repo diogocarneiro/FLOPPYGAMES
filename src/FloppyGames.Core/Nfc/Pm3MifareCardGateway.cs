@@ -44,39 +44,27 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
     private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(250);
     private static readonly string[] FailureMarkers = ["[!!]", "Can't write block", "wupC1 error", "error="];
 
+    /// <summary>O que o cliente imprime quando o cartão rejeita a chave (verificado ao vivo com `hf mf rdbl`).</summary>
+    private const string AuthErrorMarker = "Auth error";
+
+    private const string CommandEchoPrefix = "pm3 --> ";
+
     private readonly string _pm3ExecutablePath;
     private readonly Dictionary<(string Reader, int Sector), string> _sectorKeys = new();
 
     public Pm3MifareCardGateway(string pm3ExecutablePath) => _pm3ExecutablePath = pm3ExecutablePath;
 
-    public bool Authenticate(string readerName, int sector, byte[] keyA)
-    {
-        var keyHex = Convert.ToHexString(keyA);
-        var firstBlock = AbsoluteFirstBlockOfSector(sector);
+    public bool Authenticate(string readerName, int sector, byte[] keyA) =>
+        AuthenticateSectors(readerName, [sector], keyA).Contains(sector);
 
-        var ok = WithRetries(() =>
-        {
-            string output;
-            try
-            {
-                output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, $"hf mf rdbl --blk {firstBlock} -k {keyHex}");
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
-            {
-                return false;
-            }
-
-            return TryParseBlockLine(output, firstBlock, out _);
-        });
-
-        if (ok)
-        {
-            _sectorKeys[(readerName, sector)] = keyHex;
-        }
-
-        return ok;
-    }
-
+    /// <summary>
+    /// Cada setor acaba num de três estados: autenticado (o bloco foi lido), rejeitado (o cartão
+    /// respondeu <c>Auth error</c> — chave errada, resposta definitiva, verificado ao vivo) ou sem
+    /// resposta clara (falha de RF/ligação). Só este último é repetido. Antes de distinguir
+    /// "chave errada", cada chave errada custava <see cref="MaxAttempts"/> tentativas por setor —
+    /// num cartão protegido por password, só tentar a chave de fábrica primeiro chegava a somar
+    /// ~20s à leitura no Agent.
+    /// </summary>
     public IReadOnlyCollection<int> AuthenticateSectors(string readerName, IReadOnlyList<int> sectors, byte[] keyA)
     {
         var keyHex = Convert.ToHexString(keyA);
@@ -84,47 +72,63 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
 
         foreach (var chunk in sectors.Chunk(BatchSize))
         {
-            var blockBySector = chunk.ToDictionary(sector => sector, AbsoluteFirstBlockOfSector);
-            var command = string.Join("; ", blockBySector.Values.Select(block => $"hf mf rdbl --blk {block} -k {keyHex}"));
-            var succeededSectors = new HashSet<int>();
+            var undecided = chunk.ToList();
 
-            WithRetries(() =>
+            for (var attempt = 0; attempt < MaxAttempts && undecided.Count > 0; attempt++)
             {
+                if (attempt > 0)
+                {
+                    Thread.Sleep(RetryDelay);
+                }
+
+                var commandBySector = undecided.ToDictionary(sector => sector, sector => ReadBlockCommand(AbsoluteFirstBlockOfSector(sector), keyHex));
                 string output;
                 try
                 {
-                    output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, command, BatchTimeout(chunk.Length));
+                    output = Pm3CommandRunner.Run(
+                        _pm3ExecutablePath, readerName, string.Join("; ", commandBySector.Values), BatchTimeout(commandBySector.Count));
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
                 {
-                    return false;
+                    continue;
                 }
 
-                // Um setor com chave diferente desta simplesmente não aparece na saída como bloco
-                // válido — não é distinguível de uma falha de RF transitória a partir daqui, tal
-                // como já acontecia na versão setor-a-setor; por isso repete-se o lote inteiro até
-                // MaxAttempts (idempotente: re-autenticar um setor já bem-sucedido não tem custo
-                // funcional) e aceitam-se os setores que a ÚLTIMA tentativa confirmou.
-                succeededSectors.Clear();
-                foreach (var (sector, block) in blockBySector)
+                undecided.RemoveAll(sector =>
                 {
-                    if (TryParseBlockLine(output, block, out _))
+                    if (TryParseBlockLine(output, AbsoluteFirstBlockOfSector(sector), out _))
                     {
-                        succeededSectors.Add(sector);
+                        _sectorKeys[(readerName, sector)] = keyHex;
+                        authenticated.Add(sector);
+                        return true;
                     }
-                }
 
-                return succeededSectors.Count == chunk.Length;
-            });
-
-            foreach (var sector in succeededSectors)
-            {
-                _sectorKeys[(readerName, sector)] = keyHex;
-                authenticated.Add(sector);
+                    return CommandOutput(output, commandBySector[sector]).Contains(AuthErrorMarker, StringComparison.Ordinal);
+                });
             }
         }
 
         return authenticated;
+    }
+
+    private static string ReadBlockCommand(int absoluteBlock, string keyHex) => $"hf mf rdbl --blk {absoluteBlock} -k {keyHex}";
+
+    /// <summary>
+    /// O excerto da saída que pertence a um comando concreto de um lote encadeado — o cliente
+    /// ecoa cada comando como <c>pm3 --&gt; &lt;comando&gt;</c> antes da respetiva saída, e um
+    /// "Auth error" num comando não interrompe os seguintes (verificado ao vivo).
+    /// </summary>
+    private static string CommandOutput(string output, string command)
+    {
+        var marker = CommandEchoPrefix + command;
+        var start = output.IndexOf(marker, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return string.Empty;
+        }
+
+        start += marker.Length;
+        var end = output.IndexOf(CommandEchoPrefix, start, StringComparison.Ordinal);
+        return end < 0 ? output[start..] : output[start..end];
     }
 
     public byte[] ReadBlock(string readerName, int absoluteBlock)

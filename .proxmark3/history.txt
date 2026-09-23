@@ -1,0 +1,24 @@
+hf 14a info
+hf mf rdbl --blk 0 -k FFFFFFFFFFFF
+hf mf rdbl --blk 0 -k 80807C390D64
+hf mf rdbl --blk 1 -k 80807C390D64
+hf mf rdbl --blk 4 -k FFFFFFFFFFFF
+hf mf rdbl --blk 4 -k 80807C390D64
+hf mf rdbl --blk 8 -k FFFFFFFFFFFF
+hf mf rdbl --blk 8 -k 80807C390D64
+hf mf rdbl --blk 12 -k FFFFFFFFFFFF
+hf mf rdbl --blk 12 -k 80807C390D64
+hf mf rdbl --blk 16 -k FFFFFFFFFFFF
+hf mf rdbl --blk 16 -k 80807C390D64
+hf mf rdbl --blk 2 -k 80807C390D64
+hf mf rdbl --blk 4 -k 80807C390D64
+hf mf rdbl --blk 5 -k 80807C390D64
+hf mf rdbl --blk 6 -k 80807C390D64
+hf mf rdbl --blk 8 -k 80807C390D64
+hf mf rdbl --blk 9 -k 80807C390D64
+hf mf rdbl --blk 10 -k 80807C390D64
+hf mf rdbl --blk 12 -k 80807C390D64
+hf mf rdbl --blk 13 -k 80807C390D64
+hf mf rdbl --blk 14 -k 80807C390D64
+hf mf rdbl --blk 16 -k 80807C390D64
+hf 14a info

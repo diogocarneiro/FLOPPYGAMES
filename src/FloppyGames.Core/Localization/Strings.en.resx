@@ -155,6 +155,19 @@
   <data name="LS_Nfc_CardDetected" xml:space="preserve"><value>Card detected — UID {0} · {1}</value></data>
   <data name="LS_Nfc_CardTypeUnknown" xml:space="preserve"><value>unknown / unsupported type</value></data>
   <data name="LS_Drive_WriteProgress" xml:space="preserve"><value>Writing to the media... {0}%</value></data>
+  <data name="LS_Nfc_ReadingCard" xml:space="preserve"><value>Reading the card contents...</value></data>
+  <data name="LS_Nfc_CardContentGame" xml:space="preserve"><value>Game on the card: {0} ({1})</value></data>
+  <data name="LS_Nfc_CardContentEmpty" xml:space="preserve"><value>Empty card — ready to write.</value></data>
+  <data name="LS_Nfc_CardContentLocked" xml:space="preserve"><value>Card is protected with an unknown key — its contents could not be read.</value></data>
+  <data name="LS_Nfc_CardContentInvalid" xml:space="preserve"><value>The card has data, but it isn't a valid FloppyGames game.</value></data>
+  <data name="LS_Nfc_CardContentReadFailed" xml:space="preserve"><value>Could not read the card — try repositioning it on the reader.</value></data>
+  <data name="LS_Nfc_EraseButton" xml:space="preserve"><value>Format card (erase game)</value></data>
+  <data name="LS_Nfc_EraseConfirm" xml:space="preserve"><value>This erases everything on the card and restores the factory keys, so you can reprogram it with another game. The card's UID does not change. Continue?</value></data>
+  <data name="LS_Nfc_EraseMagicConfirm" xml:space="preserve"><value>The card is protected with an unknown key. Try formatting it through "magic" mode (only works on Gen1a/Gen2 clone cards)?</value></data>
+  <data name="LS_Nfc_Erasing" xml:space="preserve"><value>Formatting the card...</value></data>
+  <data name="LS_Nfc_EraseSuccess" xml:space="preserve"><value>Card formatted — pick a game and write it to reprogram the card.</value></data>
+  <data name="LS_Nfc_EraseFailed" xml:space="preserve"><value>Failed to format the card.</value></data>
+  <data name="LS_Nfc_ReplaceGameConfirm" xml:space="preserve"><value>The card already holds "{0}". Replace it with this game?</value></data>
   <data name="LS_Nfc_RefreshReaderButton" xml:space="preserve"><value>Refresh</value></data>
   <data name="LS_Nfc_WriteSuccess" xml:space="preserve"><value>Card ready: "{0}" written (UID {1}).</value></data>
   <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Failed to write to the card — see logs.</value></data>

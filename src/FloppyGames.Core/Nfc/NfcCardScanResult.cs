@@ -25,6 +25,10 @@ public sealed record NfcCardScanResult
     public static NfcCardScanResult CorruptOrEmptyData(string uid) =>
         new() { Uid = uid, Status = NfcCardScanStatus.CorruptOrEmptyData };
 
+    /// <summary>Cartão em branco (ou formatado) — comprimento declarado zero, nenhum jogo gravado.</summary>
+    public static NfcCardScanResult Empty(string uid) =>
+        new() { Uid = uid, Status = NfcCardScanStatus.Empty };
+
     public static NfcCardScanResult InvalidGameIni(string uid, IReadOnlyList<string> errors) =>
         new() { Uid = uid, Status = NfcCardScanStatus.InvalidGameIni, Errors = errors };
 

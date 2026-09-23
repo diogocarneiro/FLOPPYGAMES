@@ -233,6 +233,15 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
     vivo**: uma gravação completa de 47 blocos passou de ~180s para ~12.6s (~14×); a leitura que o
     Agent faz ao reconhecer um cartão passou de 16-33s para ~6.8s (~3-4×), confirmado com o Agent
     real a abrir a splash muito mais depressa.
+  - **Cartões protegidos por password continuavam lentos (~25s no Agent)**: cada chave errada era
+    repetida 3× por setor (o código não distinguia "chave errada" de falha de RF), e a chave de
+    fábrica era sempre tentada primeiro em todos os setores. Verificado ao vivo que o cliente
+    Proxmark3 responde `[#] Auth error` de imediato a uma chave errada, e que num lote encadeado
+    esse erro não interrompe os comandos seguintes. Agora uma rejeição explícita não é repetida (só
+    a ausência de resposta é), os restantes setores começam pela chave que abriu o setor 0 e são
+    autenticados num só lote, e o leitor lembra-se da chave que funcionou em cada cartão (por UID)
+    para a leitura seguinte. **Verificado ao vivo** no cartão protegido: leitura de ~25s para 7.1s
+    (primeira vez) e 6.2s (vezes seguintes).
   - **Checklist de validação manual ainda por fazer** (para o backend PC/SC, e para o Proxmark3 em
     cenários fora do já testado):
     - [ ] Leitor PC/SC genuíno (ex. ACR122U) ligado → confirmar deteção e leitura/escrita.

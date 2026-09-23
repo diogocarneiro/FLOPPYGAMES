@@ -149,6 +149,72 @@ public sealed class NfcCardConfigWriter
         return true;
     }
 
+    /// <summary>
+    /// Deixa o cartão como novo, para poder ser reprogramado com outro jogo: todos os blocos de
+    /// dados a zero e, nos setores protegidos pela password (chaves em <paramref name="extraKeys"/>),
+    /// o trailer volta à chave de fábrica — o UID (bloco 0) nunca é tocado. Setores já com a chave
+    /// de fábrica ficam com o trailer como estão (nada a repor, e evita reescrever trailers sem
+    /// necessidade). Devolve <c>false</c>, sem escrever nada, se algum setor não autenticar com
+    /// nenhuma das chaves conhecidas — nesse caso só resta <see cref="FormatMagic"/>. Se falhar a
+    /// meio da reposição dos trailers, o cartão fica com uns setores de fábrica e outros ainda com
+    /// a password — continua legível e basta formatar outra vez, que cada setor volta a ser tentado
+    /// com as duas chaves.
+    /// </summary>
+    public bool Format(
+        string readerName, MifareCardType cardType, IReadOnlyList<byte[]>? extraKeys = null,
+        IProgress<NfcCardWriteProgress>? progress = null)
+    {
+        var layout = MifareCardLayout.UsableDataBlocks(cardType);
+        var sectors = layout.Select(b => b.Sector).Distinct().ToArray();
+
+        var factorySectors = _gateway.AuthenticateSectors(readerName, sectors, MifareKeys.FactoryDefaultKeyA).ToHashSet();
+        var protectedSectors = new HashSet<int>();
+        foreach (var key in extraKeys ?? [])
+        {
+            var remaining = sectors.Where(s => !factorySectors.Contains(s) && !protectedSectors.Contains(s)).ToArray();
+            if (remaining.Length == 0)
+            {
+                break;
+            }
+
+            protectedSectors.UnionWith(_gateway.AuthenticateSectors(readerName, remaining, key));
+        }
+
+        if (factorySectors.Count + protectedSectors.Count != sectors.Length)
+        {
+            return false;
+        }
+
+        // Dados primeiro, trailers no fim: depois de um trailer voltar à chave de fábrica, a chave
+        // que o gateway tem em memória para esse setor deixa de servir para mais escritas nele.
+        var factoryTrailer = BuildTrailerBlock(MifareKeys.FactoryDefaultKeyA);
+        var writes = layout.Select(b => (b.AbsoluteBlock, b.Sector, BlankBlock))
+            .Concat(sectors.Where(protectedSectors.Contains).Select(s => (MifareCardLayout.TrailerAbsoluteBlock(s), s, factoryTrailer)))
+            .ToArray();
+
+        WriteChunked(readerName, writes, progress);
+        return true;
+    }
+
+    /// <summary>
+    /// Como <see cref="Format"/>, mas pelo backdoor mágico Gen1a/Gen2 — para um cartão protegido
+    /// com uma chave desconhecida (não é a de fábrica nem a da password configurada). Repõe a
+    /// chave de fábrica em TODOS os trailers, porque aqui não há forma de saber quais estavam
+    /// protegidos. Nunca toca no bloco 0 (UID). Devolve <c>false</c> num cartão genuíno.
+    /// </summary>
+    public bool FormatMagic(string readerName, MifareCardType cardType, IProgress<NfcCardWriteProgress>? progress = null)
+    {
+        var layout = MifareCardLayout.UsableDataBlocks(cardType);
+        var sectors = layout.Select(b => b.Sector).Distinct().ToArray();
+        var factoryTrailer = BuildTrailerBlock(MifareKeys.FactoryDefaultKeyA);
+
+        var writes = layout.Select(b => (b.AbsoluteBlock, b.Sector, BlankBlock))
+            .Concat(sectors.Select(s => (MifareCardLayout.TrailerAbsoluteBlock(s), s, factoryTrailer)))
+            .ToArray();
+
+        return TryMagicWriteChunked(readerName, writes, progress);
+    }
+
     /// <summary>Key A + bits de acesso de transporte de fábrica (<c>FF 07 80</c>) + byte de utilizador (<c>69</c>) + Key B — só a chave muda em relação a um trailer de fábrica.</summary>
     private static byte[] BuildTrailerBlock(byte[] key) => [.. key, 0xFF, 0x07, 0x80, 0x69, .. key];
 

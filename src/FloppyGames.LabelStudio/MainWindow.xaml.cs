@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly INfcReaderDetector _nfcReaderDetector;
     private readonly IDisposable? _nfcBackendDisposable;
     private readonly NfcCardConfigWriter _nfcCardWriter;
+    private readonly NfcCardConfigReader _nfcCardReader;
     private readonly PollingNfcCardWatcher _nfcCardWatcher;
 
     private List<DiscoveredGame> _allGames = [];
@@ -38,6 +39,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _coverFetchCts;
     private NfcCardPresence? _presentNfcCard;
     private (NfcCardPresence Card, GameConfig Config)? _pendingNfcFormatConfig;
+    private GameConfig? _presentCardGame;
+    private int _cardContentVersion;
     private NfcCardPresence? _pendingNfcProtectCard;
     private bool _settingProtectCheckboxProgrammatically;
 
@@ -62,6 +65,7 @@ public partial class MainWindow : Window
         _nfcReaderDetector = nfcBackend.ReaderDetector;
         _nfcBackendDisposable = nfcBackend.Disposable;
         _nfcCardWriter = new NfcCardConfigWriter(nfcBackend.CardGateway);
+        _nfcCardReader = new NfcCardConfigReader(nfcBackend.CardGateway);
         _nfcCardWatcher = new PollingNfcCardWatcher(nfcBackend.ReaderDetector, nfcBackend.CardPresenceProbe, _logger);
         _nfcCardWatcher.CardArrived += OnNfcCardArrived;
         _nfcCardWatcher.CardRemoved += OnNfcCardRemoved;
@@ -152,6 +156,7 @@ public partial class MainWindow : Window
         RefreshNfcReaderButton.Content = Strings.LS_Nfc_RefreshReaderButton;
         WriteButton.Content = Strings.LS_WriteButton;
         FormatCardButton.Content = Strings.LS_Nfc_FormatButton;
+        EraseCardButton.Content = Strings.LS_Nfc_EraseButton;
         ProtectCardCheckBox.Content = Strings.LS_Nfc_ProtectCheckbox;
         ProtectCardHintText.Text = Strings.LS_Nfc_ProtectNoPasswordHint;
         PrintLabelButton.Content = Strings.LS_PrintButton;
@@ -461,6 +466,8 @@ public partial class MainWindow : Window
         {
             _presentNfcCard = e;
             NfcCardStatusText.Text = Strings.LS_Nfc_CardDetected(e.Uid, CardTypeDisplayName(e.CardType));
+            EraseCardButton.Visibility = Visibility.Visible;
+            _ = ReadPresentCardAsync(e);
         });
 
     private static string CardTypeDisplayName(MifareCardType cardType) => cardType switch
@@ -479,7 +486,67 @@ public partial class MainWindow : Window
             }
 
             NfcCardStatusText.Text = Strings.LS_Nfc_WaitingForCard;
+            SetCardContent(null, string.Empty);
+            EraseCardButton.Visibility = Visibility.Collapsed;
         });
+
+    /// <summary>
+    /// Lê o cartão assim que é detetado, para mostrar que jogo tem (ou se está vazio) antes de o
+    /// utilizador decidir gravar por cima ou formatar. Com o Proxmark3 isto demora alguns
+    /// segundos — por isso corre fora da thread de UI, e o resultado só é aplicado se entretanto
+    /// nada mais mudou o que se sabe do cartão (outro cartão, ou uma gravação/formatação que já
+    /// atualizou o conteúdo mostrado).
+    /// </summary>
+    private async Task ReadPresentCardAsync(NfcCardPresence card)
+    {
+        SetCardContent(null, Strings.LS_Nfc_ReadingCard);
+        var version = _cardContentVersion;
+        var extraKeys = NfcExtraKeys();
+
+        var result = await Task.Run(() => _nfcCardReader.Read(card.ReaderName, card.Uid, card.CardType, extraKeys));
+
+        if (version != _cardContentVersion || _presentNfcCard?.Uid != card.Uid)
+        {
+            return;
+        }
+
+        switch (result.Status)
+        {
+            case NfcCardScanStatus.Valid:
+                SetCardContent(result.Config, Strings.LS_Nfc_CardContentGame(result.Config!.Title, PlatformDisplayName(result.Config.Platform)));
+                break;
+            case NfcCardScanStatus.Empty:
+                SetCardContent(null, Strings.LS_Nfc_CardContentEmpty);
+                break;
+            case NfcCardScanStatus.AuthenticationFailed:
+                SetCardContent(null, Strings.LS_Nfc_CardContentLocked);
+                break;
+            case NfcCardScanStatus.InvalidGameIni:
+            case NfcCardScanStatus.CorruptOrEmptyData:
+                SetCardContent(null, Strings.LS_Nfc_CardContentInvalid);
+                break;
+            case NfcCardScanStatus.UnsupportedCardType:
+                SetCardContent(null, string.Empty);
+                break;
+            default:
+                SetCardContent(null, Strings.LS_Nfc_CardContentReadFailed);
+                break;
+        }
+    }
+
+    private void SetCardContent(GameConfig? game, string text)
+    {
+        _cardContentVersion++;
+        _presentCardGame = game;
+        NfcCardContentText.Text = text;
+    }
+
+    /// <summary>A chave derivada da password de proteção configurada, se houver — tentada a seguir à de fábrica.</summary>
+    private static IReadOnlyList<byte[]>? NfcExtraKeys()
+    {
+        var password = new AgentSettingsStore().Load().NfcCardPassword;
+        return string.IsNullOrWhiteSpace(password) ? null : [NfcCardPasswordKey.Derive(password)];
+    }
 
     private void OnMainWindowClosed(object? sender, EventArgs e)
     {
@@ -678,7 +745,8 @@ public partial class MainWindow : Window
 
             if (check.Status == NfcCardWriteCheckStatus.NeedsConfirmation)
             {
-                var confirmed = MessageBox.Show(check.Message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var message = _presentCardGame is { } existing ? Strings.LS_Nfc_ReplaceGameConfirm(existing.Title) : check.Message;
+                var confirmed = MessageBox.Show(message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (confirmed != MessageBoxResult.Yes)
                 {
                     WriteStatusText.Text = Strings.LS_WriteCancelled;
@@ -690,6 +758,7 @@ public partial class MainWindow : Window
             await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, writeProgress, extraKeys));
             SetWriteProgress(100);
             WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
+            SetCardContent(config, Strings.LS_Nfc_CardContentGame(config.Title, PlatformDisplayName(config.Platform)));
             _logger.Information(
                 "GAME.INI gravado no cartão NFC UID {Uid} para {Title} ({Platform}).", card.Uid, config.Title, config.Platform);
 
@@ -737,6 +806,7 @@ public partial class MainWindow : Window
             {
                 SetWriteProgress(100);
                 WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
+                SetCardContent(config, Strings.LS_Nfc_CardContentGame(config.Title, PlatformDisplayName(config.Platform)));
                 _logger.Information(
                     "Cartão NFC UID {Uid} formatado e gravado via backdoor mágico para {Title} ({Platform}).",
                     card.Uid, config.Title, config.Platform);
@@ -750,6 +820,71 @@ public partial class MainWindow : Window
         {
             _logger.Error(ex, "Falha ao formatar o cartão NFC UID {Uid}.", card.Uid);
             WriteStatusText.Text = Strings.LS_Nfc_FormatFailed;
+        }
+        finally
+        {
+            SetNfcOperationInProgress(false);
+        }
+    }
+
+    /// <summary>
+    /// Deixa o cartão em branco e com as chaves de fábrica, pronto a ser reprogramado com outro
+    /// jogo (ver <see cref="NfcCardConfigWriter.Format"/>). Se o cartão estiver protegido com uma
+    /// chave que não é a de fábrica nem a da password configurada, oferece o modo "magic" — só
+    /// funciona em cartões clone Gen1a/Gen2.
+    /// </summary>
+    private async void OnEraseCardClicked(object sender, RoutedEventArgs e)
+    {
+        if (_presentNfcCard is not { } card)
+        {
+            WriteStatusText.Text = Strings.LS_Nfc_NoCardPresent;
+            return;
+        }
+
+        if (MessageBox.Show(Strings.LS_Nfc_EraseConfirm, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        FormatCardButton.Visibility = Visibility.Collapsed;
+        ResetProtectCardPanel();
+        SetNfcOperationInProgress(true);
+        ResetNfcWriteDisplay();
+        WriteStatusText.Text = Strings.LS_Nfc_Erasing;
+
+        try
+        {
+            var extraKeys = NfcExtraKeys();
+            var progress = CreateNfcWriteProgress();
+            var formatted = await Task.Run(() => _nfcCardWriter.Format(card.ReaderName, card.CardType, extraKeys, progress));
+
+            if (!formatted)
+            {
+                var tryMagic = MessageBox.Show(Strings.LS_Nfc_EraseMagicConfirm, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (tryMagic == MessageBoxResult.Yes)
+                {
+                    WriteStatusText.Text = Strings.LS_Nfc_Erasing;
+                    var magicProgress = CreateNfcWriteProgress();
+                    formatted = await Task.Run(() => _nfcCardWriter.FormatMagic(card.ReaderName, card.CardType, magicProgress));
+                }
+            }
+
+            if (formatted)
+            {
+                SetWriteProgress(100);
+                WriteStatusText.Text = Strings.LS_Nfc_EraseSuccess;
+                SetCardContent(null, Strings.LS_Nfc_CardContentEmpty);
+                _logger.Information("Cartão NFC UID {Uid} formatado.", card.Uid);
+            }
+            else
+            {
+                WriteStatusText.Text = Strings.LS_Nfc_EraseFailed;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Falha ao formatar o cartão NFC UID {Uid}.", card.Uid);
+            WriteStatusText.Text = Strings.LS_Nfc_EraseFailed;
         }
         finally
         {
@@ -845,6 +980,7 @@ public partial class MainWindow : Window
     {
         WriteButton.IsEnabled = !inProgress;
         FormatCardButton.IsEnabled = !inProgress;
+        EraseCardButton.IsEnabled = !inProgress;
         RefreshNfcReaderButton.IsEnabled = !inProgress;
 
         var hasPassword = !string.IsNullOrWhiteSpace(new AgentSettingsStore().Load().NfcCardPassword);

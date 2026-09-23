@@ -6,6 +6,7 @@ public enum NfcCardScanStatus
     UnsupportedCardType,
     AuthenticationFailed,
     CorruptOrEmptyData,
+    Empty,
     InvalidGameIni,
     ReaderCommunicationFailure,
 }

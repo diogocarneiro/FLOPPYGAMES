@@ -68,10 +68,11 @@ public class NfcGameMediaServiceTests
     }
 
     [Fact]
-    public void CardArrived_BlankCard_RaisesInvalidCardDetectedNotCardInserted()
+    public void CardArrived_BlankCard_IsIgnoredNotReportedAsInvalid()
     {
-        // Cartão nunca gravado: descodifica para texto vazio, que o GameIniParser existente
-        // rejeita por faltarem TITLE/PROCESS — cai no mesmo caminho de "GAME.INI inválido".
+        // Cartão nunca gravado (ou formatado no Label Studio): não tem jogo, mas também não tem
+        // erros — o Agent ignora-o em silêncio, como uma pen sem GAME.INI, em vez de o anunciar
+        // como um cartão inválido.
         var (watcher, _, service) = CreateService();
 
         var insertedRaised = false;
@@ -82,7 +83,7 @@ public class NfcGameMediaServiceTests
         watcher.RaiseArrived(new NfcCardPresence(Reader, Uid, MifareCardType.Classic1K));
 
         Assert.False(insertedRaised);
-        Assert.True(invalidRaised);
+        Assert.False(invalidRaised);
     }
 
     [Fact]

@@ -10,6 +10,9 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 
     public List<int> AuthenticatedSectors { get; } = new();
 
+    /// <summary>Tentativas de autenticação com uma chave diferente da exigida pelo setor (ver <see cref="RequireKeyForSector"/>).</summary>
+    public int RejectedKeyAttempts { get; private set; }
+
     public List<(int AbsoluteBlock, byte[] Data)> WriteCalls { get; } = new();
 
     public bool ThrowOnRead { get; set; }
@@ -47,6 +50,7 @@ internal sealed class FakeMifareCardGateway : IMifareCardGateway
 
         if (_requiredKeyBySector.TryGetValue(sector, out var requiredKey) && !requiredKey.SequenceEqual(keyA))
         {
+            RejectedKeyAttempts++;
             return false;
         }
 
