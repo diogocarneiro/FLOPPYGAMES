@@ -14,6 +14,9 @@
 AppId={{BC2C9071-1DB5-4978-A7DB-4B3CA3E79F66}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+; Sem isto, o nome em "Programas e Funcionalidades" seria "FloppyGames versão 0.1.0" (AppVerName
+; por omissão) — a versão já aparece na sua própria coluna.
+UninstallDisplayName={#MyAppName}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
