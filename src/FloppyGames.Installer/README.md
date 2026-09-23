@@ -19,17 +19,22 @@ fica essa no instalador e no rodapé das duas apps.
 
 ## Release automático (GitHub Actions)
 
-[`.github/workflows/release.yml`](../../.github/workflows/release.yml): cada tag `vX.Y.Z` enviada
-para o GitHub corre os testes, compila o instalador com a versão da tag (`build.ps1 -Version`) e
-publica-o numa GitHub Release, com notas geradas a partir dos commits:
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) corre os testes, compila o
+instalador (`build.ps1 -Version`) e publica-o numa GitHub Release, com notas geradas a partir dos
+commits:
 
-```powershell
-git tag v0.2.0
-git push origin v0.2.0
-```
+- **Cada push para o `main`** → release automática `vX.Y.N`: `X.Y` vem de `<Version>` em
+  `Directory.Build.props` (hoje `0.1`) e `N` é o número do run, sempre crescente. Para mudar de
+  série (ex. passar a `0.2.x`), basta alterar `<Version>` para `0.2.0`.
+- **Tag `vX.Y.Z` enviada à mão** → release com exatamente essa versão:
 
-Também se pode correr à mão (separador Actions → *Release* → *Run workflow*): nesse caso só deixa o
-instalador como artefacto do run, sem criar release, com a versão de `Directory.Build.props`.
+  ```powershell
+  git tag v0.2.0
+  git push origin v0.2.0
+  ```
+
+- **Correr à mão** (separador Actions → *Release* → *Run workflow*) → só deixa o instalador como
+  artefacto do run, sem criar release.
 
 ## O que o instalador faz
 

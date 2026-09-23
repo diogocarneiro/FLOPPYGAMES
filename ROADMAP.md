@@ -80,10 +80,11 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 - [x] Suporte a `FloppyGamesSetup.exe /configure` para alternar o arranque automático pós-instalação, sem passar pelo assistente completo.
 - [x] Desinstalação limpa: remove ficheiros, atalhos e a entrada de arranque automático (`CurUninstallStepChanged`, cobre qualquer origem da entrada — tarefa, `/configure`, ou Definições do Agent). Nunca toca em suportes amovíveis, e preserva deliberadamente os logs do utilizador em `%LOCALAPPDATA%\FloppyGames\logs`.
 - [ ] Assinatura do executável (*code signing*) — exige um certificado adquirido; fora do alcance deste ambiente. Sem isto, o Windows SmartScreen vai avisar na primeira execução — aceitável para um projeto pessoal, mas a documentar para quem for distribuir mais largamente.
-- [x] Pipeline de release (GitHub Actions, `.github/workflows/release.yml`): cada tag `vX.Y.Z`
-  corre os testes, compila o instalador com a versão da tag (`build.ps1 -Version`, que chega ao
-  instalador e ao rodapé das apps sem editar ficheiros à mão) e publica-o numa GitHub Release;
-  também corre à mão, deixando só o instalador como artefacto. Validado localmente com os mesmos
+- [x] Pipeline de release (GitHub Actions, `.github/workflows/release.yml`): cada push para o
+  `main` corre os testes, compila o instalador e publica-o numa GitHub Release `vX.Y.N` (`X.Y` de
+  `Directory.Build.props`, `N` o número do run); uma tag `vX.Y.Z` enviada à mão publica exatamente
+  essa versão. A versão chega ao instalador e ao rodapé das apps (`build.ps1 -Version`) sem editar
+  ficheiros à mão. Também corre à mão, deixando só o instalador como artefacto. Validado localmente com os mesmos
   comandos do workflow (testes em Release, `build.ps1 -Version 9.9.9` → instalador e apps a 9.9.9) —
   o primeiro run no GitHub só acontece com o primeiro push de uma tag. Ao preparar o pipeline
   descobriu-se que o `proxmark3.exe` incluído dependia de 9 DLLs do MSYS2 que só existiam no PC de
