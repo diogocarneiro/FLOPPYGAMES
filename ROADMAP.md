@@ -166,9 +166,73 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
     o texto GAME.INI já existente (`GameIniWriter`/`GameIniParser`), fatiado em blocos de 16 bytes
     com um prefixo de comprimento — sem inventar um formato binário novo. Capacidade útil: 750
     bytes num Mifare 1K (752 brutos − prefixo), ~3438 bytes num 4K, excluindo sempre o bloco de
-    fabrico (UID) e os blocos trailer (chaves/bits de acesso) de cada setor. Autenticação só com a
-    chave de fábrica (`FFFFFFFFFFFF`) — nunca re-chaveia um setor. Capacidade opcional e desligada
-    por omissão (`AgentSettings.NfcEnabled`), para máquinas sem leitor nunca tocarem em PC/SC/Proxmark3.
+    fabrico (UID) e os blocos trailer (chaves/bits de acesso) de cada setor. Autenticação com a
+    chave de fábrica (`FFFFFFFFFFFF`) e, se configurada, a chave derivada da password de proteção
+    (ver abaixo) — nunca re-chaveia um setor fora do fluxo explícito de proteção. Capacidade
+    opcional e desligada por omissão (`AgentSettings.NfcEnabled`), para máquinas sem leitor nunca
+    tocarem em PC/SC/Proxmark3.
+  - **Gravação apaga sempre o cartão inteiro**: `NfcCardConfigWriter.Write`/`WriteMagic` percorrem
+    sempre todos os blocos utilizáveis do cartão (não só os que o `GAME.INI` atual precisa) — os
+    primeiros levam o conteúdo real, o resto é limpo a zeros. Evita que um jogo gravado com uma
+    descrição longa deixe bytes residuais visíveis ao inspecionar o cartão diretamente, depois de
+    uma gravação seguinte com um `GAME.INI` mais curto por cima. **Verificado ao vivo**: gravar uma
+    config longa (39 blocos), depois uma curta (10 blocos) por cima, e confirmar byte a byte que os
+    29 blocos residuais ficaram a zero. Contrapartida aceite: uma gravação num Mifare 1K passa a
+    demorar sempre o tempo de escrever os 47 blocos (~3 min com o Proxmark3, incluindo re-tentativas
+    de RF) em vez de só os poucos blocos que o conteúdo real ocupa.
+  - **Proteção por password (opt-in por cartão)**: depois de uma gravação normal ter sucesso, uma
+    checkbox no Passo 4 do Label Studio ("Proteger este cartão com a palavra-passe configurada")
+    permite trocar a chave de fábrica pela derivada de uma password guardada nas Definições
+    (`AgentSettings.NfcCardPassword`, partilhada entre Label Studio e Agent — só assim o Agent
+    consegue voltar a ler um cartão protegido mais tarde). `NfcCardConfigWriter.ProtectWithPassword`
+    reescreve o trailer de **todos** os setores utilizáveis (não só os do jogo atual, para
+    acompanhar o âmbito de "apaga sempre o cartão inteiro" acima), mantendo os bits de acesso e o
+    byte de utilizador de fábrica (`FF 07 80 69`) — só a chave muda, para o cartão continuar
+    reescrevível por quem souber a password. Chave derivada por SHA-256 truncado a 6 bytes
+    (`NfcCardPasswordKey`). Ação explícita, nunca automática, com confirmação antes de reescrever
+    qualquer trailer (bits de acesso errados podem bloquear um setor permanentemente num cartão
+    genuíno). **Verificado ao vivo** contra o cartão Gen1a real: gravar → proteger → confirmar que a
+    chave de fábrica deixa de autenticar → confirmar que a chave derivada da password continua a
+    ler o conteúdo corretamente.
+  - **Dois bugs reais encontrados e corrigidos ao verificar a proteção por password ao vivo**, sem
+    relação com a funcionalidade em si — ambos existiam desde a funcionalidade anterior de mostrar
+    progresso da gravação bloco a bloco:
+    - O Label Studio fechava-se sozinho (`0xe0434352`, sem entrada nenhuma no log) sempre que uma
+      gravação NFC começava. Causa: `CreateNfcWriteProgress()` era chamado dentro do delegado
+      passado a `Task.Run(...)`, por isso o `Progress<T>` construído aí nunca capturava o
+      `SynchronizationContext` da thread de UI — `Task.Run` corre sempre numa thread do ThreadPool
+      sem esse contexto ambiente. Cada `Report()` acabava por ser despachado para uma thread aleatória
+      do ThreadPool, e a primeira tentativa de tocar num controlo WPF a partir daí lançava uma
+      exceção verdadeiramente não tratada (sem try/catch por perto), a derrubar o processo de
+      imediato. Corrigido construindo o `Progress<T>` na thread de UI, antes de entrar em `Task.Run`.
+    - `PollingNfcCardWatcher` usava um `lock` simples à volta de cada ciclo de sondagem — mas o
+      `Timer` interno dispara um novo ciclo a cada segundo de qualquer forma, mesmo que o anterior
+      ainda esteja bloqueado à espera do lock exclusivo por porta COM partilhado com uma gravação
+      deliberada. Cada ciclo bloqueado ficava a consumir uma nova thread do ThreadPool — observado a
+      chegar a 135 threads em poucos minutos, um caminho direto para esgotar o ThreadPool e derrubar
+      o processo. Corrigido com `Lock.TryEnter()`: um ciclo sobreposto agora salta de imediato em vez
+      de bloquear, e tenta outra vez um segundo depois.
+    Ambos verificados ao vivo: antes da correção, a gravação falhava consistentemente ao primeiro
+    bloco; depois, várias gravações seguidas (incluindo gravações completas de 47 blocos) correram
+    sem falhas, com a contagem de threads estável.
+  - **Deteção NFC lenta a abrir a splash, corrigida com invocações em lote**: um utilizador reportou
+    que aproximar um cartão do Agent demorava "imenso tempo" a abrir a splash. Medido ao vivo: ~2.3s
+    para UM único comando `hf mf rdbl` (o cliente Proxmark3 é invocado como processo externo por
+    comando — o custo dominante é arrancar o processo e ligar por USB-CDC, não a transação RF em
+    si), e o fluxo de leitura fazia um comando por bloco. Confirmado que o cliente aceita vários
+    comandos separados por `;` numa só invocação (`hf mf rdbl ...; hf mf rdbl ...; ...`) — 3 blocos
+    combinados: ~1.2s, MENOS do que um único bloco isolado. `IMifareCardGateway` ganhou
+    `ReadBlocks`/`WriteBlocks`/`TryMagicWriteBlocks`/`AuthenticateSectors` como métodos de interface
+    com implementação por omissão (loop sobre os métodos individuais — PC/SC e o `Fake` de testes
+    não precisaram de nenhuma alteração), e `Pm3MifareCardGateway` passou a ter overrides reais que
+    agrupam até 10 blocos por invocação (repetindo o lote inteiro, não bloco a bloco, se algum falhar
+    — RF flutuante já não era distinguível de chave errada na versão anterior, por isso não é um
+    novo risco). `NfcCardConfigReader`/`NfcCardConfigWriter` foram reescritos para autenticar todos
+    os setores em lote (por chave candidata) e ler/escrever em grupos de 10 blocos, continuando a
+    reportar progresso após cada grupo (não só no fim) para a UI não parecer parada. **Verificado ao
+    vivo**: uma gravação completa de 47 blocos passou de ~180s para ~12.6s (~14×); a leitura que o
+    Agent faz ao reconhecer um cartão passou de 16-33s para ~6.8s (~3-4×), confirmado com o Agent
+    real a abrir a splash muito mais depressa.
   - **Checklist de validação manual ainda por fazer** (para o backend PC/SC, e para o Proxmark3 em
     cenários fora do já testado):
     - [ ] Leitor PC/SC genuíno (ex. ACR122U) ligado → confirmar deteção e leitura/escrita.
@@ -176,7 +240,16 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
     - [ ] Cartão previamente usado noutro sistema (chaves não-standard) → confirmar erro de autenticação claro, sem exceção nem escrita parcial.
     - [ ] Etiqueta não-Mifare-Classic (ex. NTAG) → confirmar "tipo de cartão não suportado", sem crash nem leitura incorreta.
     - [ ] Desligar o leitor a meio de uma sessão do Agent (com `NfcEnabled` ativo) → confirmar aviso no log, disquete/USB continuam a funcionar.
-    - [ ] Fluxo completo pela UI do Label Studio (não só pelas classes `Core` diretamente) e pelo Agent com splash/"CARD ID".
+    - [x] Fluxo completo pela UI do Label Studio: confirmado via Windows UI Automation contra o
+      cartão real — selecionar jogo, mudar para alvo "Cartão NFC", clicar "Escrever para o
+      suporte", ver o progresso bloco a bloco e a gravação a terminar com sucesso, várias vezes
+      seguidas sem falhas.
+    - [x] Fluxo completo pelo Agent: confirmado via Windows UI Automation + captura de ecrã com o
+      Agent real e o cartão Gen1a no Proxmark3 — cartão gravado com Portal (AppID 400), splash
+      aberta com título "Portal", ícone NFC + "CARTÃO NFC DETETADO", "CARD ID DA466B03", a descrição
+      gravada no cartão e a capa descarregada do CDN da Steam. O lançamento em si expirou após o
+      timeout de 30s (o Portal não arrancou pela Steam nesse momento — problema do lado da Steam,
+      não do NFC), e o Agent reportou esse timeout corretamente.
 
 ---
 

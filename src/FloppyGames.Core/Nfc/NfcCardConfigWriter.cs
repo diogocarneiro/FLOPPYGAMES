@@ -13,6 +13,14 @@ public sealed class NfcCardConfigWriter
 {
     private static readonly byte[] BlankBlock = new byte[16];
 
+    /// <summary>
+    /// Blocos por atualização de progresso — cada grupo corresponde a uma só chamada em lote ao
+    /// gateway (ver <see cref="IMifareCardGateway.WriteBlocks"/>), para a UI continuar a ver
+    /// atualizações periódicas em vez de tudo de uma vez só no fim de uma gravação de cartão
+    /// inteiro.
+    /// </summary>
+    private const int ProgressChunkSize = 10;
+
     private readonly IMifareCardGateway _gateway;
 
     public NfcCardConfigWriter(IMifareCardGateway gateway) => _gateway = gateway;
@@ -77,28 +85,13 @@ public sealed class NfcCardConfigWriter
         IProgress<NfcCardWriteProgress>? progress = null, IReadOnlyList<byte[]>? extraKeys = null)
     {
         var iniText = GameIniWriter.Write(config);
-        var blocks = MifareConfigCodec.Encode(iniText, cardType);
+        var contentBlocks = MifareConfigCodec.Encode(iniText, cardType);
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
         var keysToTry = MifareKeys.CandidatesWith(extraKeys);
 
-        var authenticatedSectors = new HashSet<int>();
-        for (var i = 0; i < layout.Count; i++)
-        {
-            var block = layout[i];
-            if (!authenticatedSectors.Contains(block.Sector))
-            {
-                if (!keysToTry.Any(key => _gateway.Authenticate(readerName, block.Sector, key)))
-                {
-                    throw new InvalidOperationException($"Falha de autenticação no setor {block.Sector} ao gravar.");
-                }
+        AuthenticateAllSectorsOrThrow(readerName, layout, keysToTry);
 
-                authenticatedSectors.Add(block.Sector);
-            }
-
-            var data = i < blocks.Length ? blocks[i] : BlankBlock;
-            _gateway.WriteBlock(readerName, block.AbsoluteBlock, data);
-            progress?.Report(new NfcCardWriteProgress(i + 1, layout.Count, block.Sector, block.AbsoluteBlock, data));
-        }
+        WriteChunked(readerName, BuildFullCardWrites(layout, contentBlocks), progress);
     }
 
     /// <summary>
@@ -115,22 +108,10 @@ public sealed class NfcCardConfigWriter
     public bool WriteMagic(string readerName, MifareCardType cardType, GameConfig config, IProgress<NfcCardWriteProgress>? progress = null)
     {
         var iniText = GameIniWriter.Write(config);
-        var blocks = MifareConfigCodec.Encode(iniText, cardType);
+        var contentBlocks = MifareConfigCodec.Encode(iniText, cardType);
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
 
-        for (var i = 0; i < layout.Count; i++)
-        {
-            var block = layout[i];
-            var data = i < blocks.Length ? blocks[i] : BlankBlock;
-            if (!_gateway.TryMagicWriteBlock(readerName, block.AbsoluteBlock, data))
-            {
-                return false;
-            }
-
-            progress?.Report(new NfcCardWriteProgress(i + 1, layout.Count, block.Sector, block.AbsoluteBlock, data));
-        }
-
-        return true;
+        return TryMagicWriteChunked(readerName, BuildFullCardWrites(layout, contentBlocks), progress);
     }
 
     /// <summary>
@@ -157,24 +138,105 @@ public sealed class NfcCardConfigWriter
         var layout = MifareCardLayout.UsableDataBlocks(cardType);
         var sectors = layout.Select(b => b.Sector).Distinct().ToArray();
 
-        for (var i = 0; i < sectors.Length; i++)
+        var authenticated = _gateway.AuthenticateSectors(readerName, sectors, MifareKeys.FactoryDefaultKeyA);
+        if (authenticated.Count != sectors.Length)
         {
-            var sector = sectors[i];
-            if (!_gateway.Authenticate(readerName, sector, MifareKeys.FactoryDefaultKeyA))
-            {
-                return false;
-            }
-
-            var trailerBlock = MifareCardLayout.TrailerAbsoluteBlock(sector);
-            _gateway.WriteBlock(readerName, trailerBlock, trailerData);
-            progress?.Report(new NfcCardWriteProgress(i + 1, sectors.Length, sector, trailerBlock, trailerData));
+            return false;
         }
 
+        var trailerWrites = sectors.Select(sector => (MifareCardLayout.TrailerAbsoluteBlock(sector), sector, trailerData)).ToArray();
+        WriteChunked(readerName, trailerWrites, progress);
         return true;
     }
 
     /// <summary>Key A + bits de acesso de transporte de fábrica (<c>FF 07 80</c>) + byte de utilizador (<c>69</c>) + Key B — só a chave muda em relação a um trailer de fábrica.</summary>
     private static byte[] BuildTrailerBlock(byte[] key) => [.. key, 0xFF, 0x07, 0x80, 0x69, .. key];
+
+    private static (int AbsoluteBlock, int Sector, byte[] Data)[] BuildFullCardWrites(
+        IReadOnlyList<MifareBlockAddress> layout, byte[][] contentBlocks) =>
+        [.. layout.Select((block, i) => (block.AbsoluteBlock, block.Sector, i < contentBlocks.Length ? contentBlocks[i] : BlankBlock))];
+
+    /// <summary>
+    /// Autentica todos os setores necessários, tentando cada chave candidata (fábrica, depois
+    /// eventuais chaves extra) num só lote por chave em vez de setor a setor — ver
+    /// <see cref="IMifareCardGateway.AuthenticateSectors"/>. Lança se algum setor não autenticar
+    /// com nenhuma das chaves tentadas.
+    /// </summary>
+    private void AuthenticateAllSectorsOrThrow(string readerName, IReadOnlyList<MifareBlockAddress> layout, IReadOnlyList<byte[]> keysToTry)
+    {
+        var allSectors = layout.Select(b => b.Sector).Distinct().ToArray();
+        var authenticatedSectors = new HashSet<int>();
+
+        foreach (var key in keysToTry)
+        {
+            var remaining = allSectors.Where(s => !authenticatedSectors.Contains(s)).ToArray();
+            if (remaining.Length == 0)
+            {
+                break;
+            }
+
+            authenticatedSectors.UnionWith(_gateway.AuthenticateSectors(readerName, remaining, key));
+        }
+
+        var failedSector = allSectors.FirstOrDefault(s => !authenticatedSectors.Contains(s), -1);
+        if (failedSector != -1)
+        {
+            throw new InvalidOperationException($"Falha de autenticação no setor {failedSector} ao gravar.");
+        }
+    }
+
+    /// <summary>Escreve <paramref name="writes"/> em grupos de <see cref="ProgressChunkSize"/>, reportando progresso depois de cada grupo — ver <see cref="ProgressChunkSize"/>.</summary>
+    private void WriteChunked(
+        string readerName, IReadOnlyList<(int AbsoluteBlock, int Sector, byte[] Data)> writes, IProgress<NfcCardWriteProgress>? progress)
+    {
+        for (var start = 0; start < writes.Count; start += ProgressChunkSize)
+        {
+            var count = Math.Min(ProgressChunkSize, writes.Count - start);
+            var chunk = new (int AbsoluteBlock, byte[] Data)[count];
+            for (var i = 0; i < count; i++)
+            {
+                chunk[i] = (writes[start + i].AbsoluteBlock, writes[start + i].Data);
+            }
+
+            _gateway.WriteBlocks(readerName, chunk);
+            ReportChunkProgress(writes, start, count, progress);
+        }
+    }
+
+    /// <summary>Como <see cref="WriteChunked"/>, mas pelo backdoor mágico — devolve <c>false</c> ao primeiro grupo que falhar.</summary>
+    private bool TryMagicWriteChunked(
+        string readerName, IReadOnlyList<(int AbsoluteBlock, int Sector, byte[] Data)> writes, IProgress<NfcCardWriteProgress>? progress)
+    {
+        for (var start = 0; start < writes.Count; start += ProgressChunkSize)
+        {
+            var count = Math.Min(ProgressChunkSize, writes.Count - start);
+            var chunk = new (int AbsoluteBlock, byte[] Data)[count];
+            for (var i = 0; i < count; i++)
+            {
+                chunk[i] = (writes[start + i].AbsoluteBlock, writes[start + i].Data);
+            }
+
+            if (!_gateway.TryMagicWriteBlocks(readerName, chunk))
+            {
+                return false;
+            }
+
+            ReportChunkProgress(writes, start, count, progress);
+        }
+
+        return true;
+    }
+
+    private static void ReportChunkProgress(
+        IReadOnlyList<(int AbsoluteBlock, int Sector, byte[] Data)> writes, int start, int count, IProgress<NfcCardWriteProgress>? progress)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            var index = start + i;
+            var (absoluteBlock, sector, data) = writes[index];
+            progress?.Report(new NfcCardWriteProgress(index + 1, writes.Count, sector, absoluteBlock, data));
+        }
+    }
 
     private static string FormatBytes(long bytes) => bytes switch
     {

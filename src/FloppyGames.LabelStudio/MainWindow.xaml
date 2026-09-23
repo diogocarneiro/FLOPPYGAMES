@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
-        Title="FloppyGames Label Studio" Height="640" Width="940" MinHeight="540" MinWidth="800"
-        WindowStartupLocation="CenterScreen">
+        Title="FloppyGames Label Studio" Height="1280" Width="1920" MinHeight="540" MinWidth="800"
+        WindowStartupLocation="CenterScreen" SourceInitialized="OnSourceInitialized">
     <Window.Resources>
         <Style x:Key="StepHeader" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Bold" />
@@ -122,6 +122,8 @@
                 <Button x:Name="PrintLabelButton" Height="32" Margin="0,8,0,0"
                         Click="OnPrintLabelClicked" />
                 <TextBlock x:Name="WriteStatusText" Foreground="Gray" TextWrapping="Wrap" Margin="0,8,0,0" />
+                <ProgressBar x:Name="WriteProgressBar" Height="10" Margin="0,6,0,0" Minimum="0" Maximum="100"
+                             Visibility="Collapsed" Foreground="#FF39B35A" />
                 <Button x:Name="FormatCardButton" Height="32" Margin="0,8,0,0" Visibility="Collapsed"
                         Foreground="#FFB00000" Click="OnFormatCardClicked" />
                 <StackPanel x:Name="ProtectCardPanel" Visibility="Collapsed" Margin="0,8,0,0">

@@ -284,6 +284,40 @@ public class NfcCardConfigWriterTests
         Assert.NotEmpty(gateway.WriteCalls);
     }
 
+    /// <summary>
+    /// Regressão: a autenticação em lote (ver <see cref="IMifareCardGateway.AuthenticateSectors"/>)
+    /// tenta cada chave candidata sobre TODOS os setores ainda por autenticar, não só o primeiro
+    /// que falhar — vários setores com chaves diferentes (alguns de fábrica, outros protegidos por
+    /// password) têm de acabar todos autenticados antes da escrita prosseguir.
+    /// </summary>
+    [Fact]
+    public void Write_MultipleSectorsProtectedByPasswordKey_ExtraKeyProvided_Succeeds()
+    {
+        var gateway = new FakeMifareCardGateway();
+        var passwordKey = NfcCardPasswordKey.Derive("hunter2");
+        gateway.RequireKeyForSector(0, passwordKey);
+        gateway.RequireKeyForSector(2, passwordKey);
+        gateway.RequireKeyForSector(5, passwordKey);
+        var writer = new NfcCardConfigWriter(gateway);
+
+        writer.Write(Reader, MifareCardType.Classic1K, Config, extraKeys: [passwordKey]);
+
+        var layout = MifareCardLayout.UsableDataBlocks(MifareCardType.Classic1K);
+        Assert.Equal(layout.Count, gateway.WriteCalls.Count);
+    }
+
+    [Fact]
+    public void Write_SectorAuthenticationFailsWithAllCandidateKeys_Throws()
+    {
+        var gateway = new FakeMifareCardGateway();
+        gateway.FailAuthenticationForSector(3);
+        var writer = new NfcCardConfigWriter(gateway);
+        var passwordKey = NfcCardPasswordKey.Derive("hunter2");
+
+        Assert.Throws<InvalidOperationException>(
+            () => writer.Write(Reader, MifareCardType.Classic1K, Config, extraKeys: [passwordKey]));
+    }
+
     [Fact]
     public void ProtectWithPassword_WritesTrailerForEverySector()
     {

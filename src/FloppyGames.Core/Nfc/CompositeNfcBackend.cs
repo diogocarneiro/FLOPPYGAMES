@@ -49,6 +49,11 @@ public sealed partial class CompositeNfcBackend : INfcReaderDetector, INfcCardPr
             ? _pm3Gateway.Authenticate(readerName, sector, keyA)
             : _pcscGateway.Authenticate(readerName, sector, keyA);
 
+    public IReadOnlyCollection<int> AuthenticateSectors(string readerName, IReadOnlyList<int> sectors, byte[] keyA) =>
+        IsProxmark3Reader(readerName)
+            ? _pm3Gateway.AuthenticateSectors(readerName, sectors, keyA)
+            : _pcscGateway.AuthenticateSectors(readerName, sectors, keyA);
+
     public byte[] ReadBlock(string readerName, int absoluteBlock) =>
         IsProxmark3Reader(readerName)
             ? _pm3Gateway.ReadBlock(readerName, absoluteBlock)
@@ -70,6 +75,32 @@ public sealed partial class CompositeNfcBackend : INfcReaderDetector, INfcCardPr
         IsProxmark3Reader(readerName)
             ? _pm3Gateway.TryMagicWriteBlock(readerName, absoluteBlock, data)
             : _pcscGateway.TryMagicWriteBlock(readerName, absoluteBlock, data);
+
+    // As 3 chamadas de lote abaixo têm de ser reencaminhadas explicitamente, tal como as
+    // individuais acima — sem isto, o compilador escolheria a implementação por omissão da
+    // interface (que faz um ReadBlock/WriteBlock/TryMagicWriteBlock por bloco), perdendo o ganho
+    // de desempenho do backend Proxmark3 precisamente quando é usado através deste router.
+    public byte[][] ReadBlocks(string readerName, IReadOnlyList<int> absoluteBlocks) =>
+        IsProxmark3Reader(readerName)
+            ? _pm3Gateway.ReadBlocks(readerName, absoluteBlocks)
+            : _pcscGateway.ReadBlocks(readerName, absoluteBlocks);
+
+    public void WriteBlocks(string readerName, IReadOnlyList<(int AbsoluteBlock, byte[] Data)> blocks)
+    {
+        if (IsProxmark3Reader(readerName))
+        {
+            _pm3Gateway.WriteBlocks(readerName, blocks);
+        }
+        else
+        {
+            _pcscGateway.WriteBlocks(readerName, blocks);
+        }
+    }
+
+    public bool TryMagicWriteBlocks(string readerName, IReadOnlyList<(int AbsoluteBlock, byte[] Data)> blocks) =>
+        IsProxmark3Reader(readerName)
+            ? _pm3Gateway.TryMagicWriteBlocks(readerName, blocks)
+            : _pcscGateway.TryMagicWriteBlocks(readerName, blocks);
 
     private static bool IsProxmark3Reader(string readerName) => ComPortNamePattern().IsMatch(readerName);
 

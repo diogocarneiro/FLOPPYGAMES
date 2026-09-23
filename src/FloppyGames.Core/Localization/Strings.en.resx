@@ -152,7 +152,9 @@
   <data name="LS_Nfc_NoReaderDetected" xml:space="preserve"><value>No NFC reader detected.</value></data>
   <data name="LS_Nfc_ReaderDetected" xml:space="preserve"><value>Reader detected: {0}</value></data>
   <data name="LS_Nfc_WaitingForCard" xml:space="preserve"><value>Waiting for a card...</value></data>
-  <data name="LS_Nfc_CardDetected" xml:space="preserve"><value>Card detected — UID {0}</value></data>
+  <data name="LS_Nfc_CardDetected" xml:space="preserve"><value>Card detected — UID {0} · {1}</value></data>
+  <data name="LS_Nfc_CardTypeUnknown" xml:space="preserve"><value>unknown / unsupported type</value></data>
+  <data name="LS_Drive_WriteProgress" xml:space="preserve"><value>Writing to the media... {0}%</value></data>
   <data name="LS_Nfc_RefreshReaderButton" xml:space="preserve"><value>Refresh</value></data>
   <data name="LS_Nfc_WriteSuccess" xml:space="preserve"><value>Card ready: "{0}" written (UID {1}).</value></data>
   <data name="LS_Nfc_WriteFailed" xml:space="preserve"><value>Failed to write to the card — see logs.</value></data>

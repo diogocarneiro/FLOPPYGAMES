@@ -56,21 +56,37 @@ public sealed class NfcCardConfigReader
 
         var blocks = new List<byte[]> { firstBlockData };
 
-        try
+        if (neededBlockCount > 1)
         {
-            for (var i = 1; i < neededBlockCount; i++)
+            // Os blocos que faltam podem abranger vários setores — autentica cada setor ainda por
+            // ver e lê tudo numa só chamada em lote (ver IMifareCardGateway.ReadBlocks), em vez de
+            // um bloco de cada vez: com o backend Proxmark3 isto é a diferença entre alguns
+            // segundos e dezenas de segundos até a splash do Agent conseguir abrir.
+            var remaining = layout.Skip(1).Take(neededBlockCount - 1).ToList();
+
+            try
             {
-                if (!TryAuthenticateAndRead(readerName, layout[i], authenticatedSectors, keysToTry, out var data))
+                foreach (var sector in remaining.Select(b => b.Sector).Distinct())
                 {
-                    return NfcCardScanResult.AuthenticationFailed(uid, layout[i].Sector);
+                    if (authenticatedSectors.Contains(sector))
+                    {
+                        continue;
+                    }
+
+                    if (!keysToTry.Any(key => _gateway.Authenticate(readerName, sector, key)))
+                    {
+                        return NfcCardScanResult.AuthenticationFailed(uid, sector);
+                    }
+
+                    authenticatedSectors.Add(sector);
                 }
 
-                blocks.Add(data);
+                blocks.AddRange(_gateway.ReadBlocks(readerName, [.. remaining.Select(b => b.AbsoluteBlock)]));
             }
-        }
-        catch (Exception ex)
-        {
-            return NfcCardScanResult.ReaderCommunicationFailure(uid, ex.Message);
+            catch (Exception ex)
+            {
+                return NfcCardScanResult.ReaderCommunicationFailure(uid, ex.Message);
+            }
         }
 
         var iniText = MifareConfigCodec.Decode(blocks);

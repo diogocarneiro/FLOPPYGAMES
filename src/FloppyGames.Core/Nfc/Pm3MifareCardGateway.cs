@@ -17,6 +17,14 @@ namespace FloppyGames.Core.Nfc;
 /// funciona logo a seguir sem qualquer mudança de código. Por isso cada operação tenta algumas
 /// vezes antes de desistir, em vez de reportar falha (ou, pior, ficar sem saber se algo foi
 /// escrito) à primeira tentativa falhada.
+///
+/// As operações <c>ReadBlocks</c>/<c>WriteBlocks</c>/<c>TryMagicWriteBlocks</c> agrupam vários
+/// comandos `hf mf ...` numa só invocação do <c>proxmark3.exe</c> (separados por `;`, sintaxe já
+/// suportada pelo cliente) — medido ao vivo: ~2.3s para UM bloco isolado (dominado pelo arranque
+/// do processo e ligação USB-CDC, não pela transação RF em si) contra ~1.2s para TRÊS blocos
+/// combinados numa só invocação. Sem isto, gravar um cartão inteiro (47 blocos, desde que
+/// <see cref="NfcCardConfigWriter"/> passou a limpar sempre o cartão todo) chegava a demorar ~3
+/// minutos.
 /// </summary>
 public sealed class Pm3MifareCardGateway : IMifareCardGateway
 {
@@ -24,6 +32,15 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
     private const int SmallSectorBlockCount = 4;
     private const int LargeSectorBlockCount = 16;
     private const int MaxAttempts = 3;
+
+    /// <summary>
+    /// Blocos por invocação em lote — grande o suficiente para reduzir a maioria das chamadas de
+    /// processo, pequeno o suficiente para que uma falha de RF isolada num bloco não obrigue a
+    /// reenviar dezenas de blocos já bem-sucedidos (o lote inteiro repete-se em caso de falha,
+    /// ver <see cref="WithRetries"/>).
+    /// </summary>
+    private const int BatchSize = 10;
+
     private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(250);
     private static readonly string[] FailureMarkers = ["[!!]", "Can't write block", "wupC1 error", "error="];
 
@@ -58,6 +75,56 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
         }
 
         return ok;
+    }
+
+    public IReadOnlyCollection<int> AuthenticateSectors(string readerName, IReadOnlyList<int> sectors, byte[] keyA)
+    {
+        var keyHex = Convert.ToHexString(keyA);
+        var authenticated = new HashSet<int>();
+
+        foreach (var chunk in sectors.Chunk(BatchSize))
+        {
+            var blockBySector = chunk.ToDictionary(sector => sector, AbsoluteFirstBlockOfSector);
+            var command = string.Join("; ", blockBySector.Values.Select(block => $"hf mf rdbl --blk {block} -k {keyHex}"));
+            var succeededSectors = new HashSet<int>();
+
+            WithRetries(() =>
+            {
+                string output;
+                try
+                {
+                    output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, command, BatchTimeout(chunk.Length));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+                {
+                    return false;
+                }
+
+                // Um setor com chave diferente desta simplesmente não aparece na saída como bloco
+                // válido — não é distinguível de uma falha de RF transitória a partir daqui, tal
+                // como já acontecia na versão setor-a-setor; por isso repete-se o lote inteiro até
+                // MaxAttempts (idempotente: re-autenticar um setor já bem-sucedido não tem custo
+                // funcional) e aceitam-se os setores que a ÚLTIMA tentativa confirmou.
+                succeededSectors.Clear();
+                foreach (var (sector, block) in blockBySector)
+                {
+                    if (TryParseBlockLine(output, block, out _))
+                    {
+                        succeededSectors.Add(sector);
+                    }
+                }
+
+                return succeededSectors.Count == chunk.Length;
+            });
+
+            foreach (var sector in succeededSectors)
+            {
+                _sectorKeys[(readerName, sector)] = keyHex;
+                authenticated.Add(sector);
+            }
+        }
+
+        return authenticated;
     }
 
     public byte[] ReadBlock(string readerName, int absoluteBlock)
@@ -146,6 +213,167 @@ public sealed class Pm3MifareCardGateway : IMifareCardGateway
             return output.Contains("Writing block number", StringComparison.Ordinal)
                 && !FailureMarkers.Any(marker => output.Contains(marker, StringComparison.Ordinal));
         });
+    }
+
+    public byte[][] ReadBlocks(string readerName, IReadOnlyList<int> absoluteBlocks)
+    {
+        var results = new byte[absoluteBlocks.Count][];
+        var offset = 0;
+
+        foreach (var chunk in absoluteBlocks.Chunk(BatchSize))
+        {
+            var chunkData = ReadBlockChunk(readerName, chunk);
+            Array.Copy(chunkData, 0, results, offset, chunkData.Length);
+            offset += chunkData.Length;
+        }
+
+        return results;
+    }
+
+    private byte[][] ReadBlockChunk(string readerName, int[] blocks)
+    {
+        var keyHexByBlock = blocks.Select(b => RequireKey(readerName, b)).ToArray();
+        var command = string.Join("; ", blocks.Select((b, i) => $"hf mf rdbl --blk {b} -k {keyHexByBlock[i]}"));
+        var data = new byte[blocks.Length][];
+
+        var ok = WithRetries(() =>
+        {
+            string output;
+            try
+            {
+                output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, command, BatchTimeout(blocks.Length));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < blocks.Length; i++)
+            {
+                if (!TryParseBlockLine(output, blocks[i], out data[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        if (!ok)
+        {
+            throw new InvalidOperationException($"Falha ao ler {blocks.Length} blocos em lote via Proxmark3 ({readerName}).");
+        }
+
+        return data;
+    }
+
+    public void WriteBlocks(string readerName, IReadOnlyList<(int AbsoluteBlock, byte[] Data)> blocks)
+    {
+        foreach (var chunk in blocks.Chunk(BatchSize))
+        {
+            WriteBlockChunk(readerName, chunk);
+        }
+    }
+
+    private void WriteBlockChunk(string readerName, (int AbsoluteBlock, byte[] Data)[] chunk)
+    {
+        foreach (var (_, data) in chunk)
+        {
+            if (data.Length != 16)
+            {
+                throw new ArgumentException("Um bloco Mifare Classic tem sempre 16 bytes.", nameof(chunk));
+            }
+        }
+
+        var command = string.Join(
+            "; ", chunk.Select(b => $"hf mf wrbl --blk {b.AbsoluteBlock} -k {RequireKey(readerName, b.AbsoluteBlock)} -d {Convert.ToHexString(b.Data)}"));
+
+        var ok = WithRetries(() =>
+        {
+            string output;
+            try
+            {
+                output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, command, BatchTimeout(chunk.Length));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            {
+                return false;
+            }
+
+            return CountOccurrences(output, "Write ( ok )") == chunk.Length;
+        });
+
+        if (!ok)
+        {
+            throw new InvalidOperationException($"Falha ao escrever {chunk.Length} blocos em lote via Proxmark3 ({readerName}).");
+        }
+    }
+
+    public bool TryMagicWriteBlocks(string readerName, IReadOnlyList<(int AbsoluteBlock, byte[] Data)> blocks)
+    {
+        foreach (var (absoluteBlock, data) in blocks)
+        {
+            if (data.Length != 16)
+            {
+                throw new ArgumentException("Um bloco Mifare Classic tem sempre 16 bytes.", nameof(blocks));
+            }
+
+            // Mesma proteção do bloco de fabrico que a versão individual — ver TryMagicWriteBlock.
+            if (absoluteBlock == 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(blocks), absoluteBlock, "O bloco de fabrico (UID) nunca pode ser escrito.");
+            }
+        }
+
+        foreach (var chunk in blocks.Chunk(BatchSize))
+        {
+            if (!TryMagicWriteBlockChunk(readerName, chunk))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool TryMagicWriteBlockChunk(string readerName, (int AbsoluteBlock, byte[] Data)[] chunk)
+    {
+        var command = string.Join("; ", chunk.Select(b => $"hf mf csetblk --blk {b.AbsoluteBlock} -d {Convert.ToHexString(b.Data)}"));
+
+        return WithRetries(() =>
+        {
+            string output;
+            try
+            {
+                output = Pm3CommandRunner.Run(_pm3ExecutablePath, readerName, command, BatchTimeout(chunk.Length));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+            {
+                return false;
+            }
+
+            // Mesma exigência de prova dupla da versão individual (ver TryMagicWriteBlock), só que
+            // a prova positiva agora tem de aparecer uma vez por bloco do lote.
+            return CountOccurrences(output, "Writing block number") == chunk.Length
+                && !FailureMarkers.Any(marker => output.Contains(marker, StringComparison.Ordinal));
+        });
+    }
+
+    /// <summary>Cresce com o tamanho do lote — o custo fixo de arranque do processo (~2s) é pago uma só vez, mas cada bloco adicional ainda pode precisar de tempo real de RF.</summary>
+    private static TimeSpan BatchTimeout(int blockCount) => TimeSpan.FromSeconds(Math.Max(20, 3 * blockCount));
+
+    private static int CountOccurrences(string haystack, string needle)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = haystack.IndexOf(needle, index, StringComparison.Ordinal)) != -1)
+        {
+            count++;
+            index += needle.Length;
+        }
+
+        return count;
     }
 
     /// <summary>

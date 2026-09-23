@@ -11,6 +11,8 @@ namespace FloppyGames.Core.Media;
 /// </summary>
 public sealed class FloppyMediaWriter
 {
+    private const int WriteChunkSize = 16 * 1024;
+
     private readonly IRemovableDriveInspector _inspector;
 
     public FloppyMediaWriter(IRemovableDriveInspector inspector) => _inspector = inspector;
@@ -37,14 +39,43 @@ public sealed class FloppyMediaWriter
             : MediaWriteCheck.Ready();
     }
 
-    /// <summary>Escreve de facto para o suporte. Chamar só depois de <see cref="Check"/> não devolver <c>Blocked</c>.</summary>
-    public void Write(string driveRoot, GameConfig config, byte[]? coverBytes, string? coverFileName)
+    /// <summary>
+    /// Escreve de facto para o suporte. Chamar só depois de <see cref="Check"/> não devolver
+    /// <c>Blocked</c>. Numa disquete real (~30-60 KB/s) uma capa pode demorar vários segundos a
+    /// gravar, por isso a escrita é feita em pedaços com <see cref="FileOptions.WriteThrough"/> e
+    /// reporta <paramref name="progress"/> depois de cada pedaço — assim o progresso acompanha o que
+    /// já está de facto no suporte, não só o que ficou na cache de escrita do Windows. Nunca chamar
+    /// na thread de UI.
+    /// </summary>
+    public void Write(
+        string driveRoot, GameConfig config, byte[]? coverBytes, string? coverFileName,
+        IProgress<MediaWriteProgress>? progress = null)
     {
-        File.WriteAllText(Path.Combine(driveRoot, "GAME.INI"), GameIniWriter.Write(config));
+        var iniBytes = Encoding.UTF8.GetBytes(GameIniWriter.Write(config));
+        var writeCover = coverBytes is not null && !string.IsNullOrWhiteSpace(coverFileName);
+        long totalBytes = iniBytes.Length + (writeCover ? coverBytes!.Length : 0);
+        long bytesWritten = 0;
 
-        if (coverBytes is not null && !string.IsNullOrWhiteSpace(coverFileName))
+        WriteFileInChunks(Path.Combine(driveRoot, "GAME.INI"), iniBytes, totalBytes, ref bytesWritten, progress);
+
+        if (writeCover)
         {
-            File.WriteAllBytes(Path.Combine(driveRoot, coverFileName), coverBytes);
+            WriteFileInChunks(Path.Combine(driveRoot, coverFileName!), coverBytes!, totalBytes, ref bytesWritten, progress);
+        }
+    }
+
+    private static void WriteFileInChunks(
+        string path, byte[] content, long totalBytes, ref long bytesWritten, IProgress<MediaWriteProgress>? progress)
+    {
+        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, WriteChunkSize, FileOptions.WriteThrough);
+
+        for (var offset = 0; offset < content.Length; offset += WriteChunkSize)
+        {
+            var count = Math.Min(WriteChunkSize, content.Length - offset);
+            stream.Write(content, offset, count);
+            stream.Flush();
+            bytesWritten += count;
+            progress?.Report(new MediaWriteProgress(bytesWritten, totalBytes));
         }
     }
 

@@ -83,6 +83,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// A janela abre a 1920x1280 por omissão, mas num ecrã com menos área útil isso cortaria a
+    /// janela (ou a barra de tarefas por cima) — reduz ao que cabe e volta a centrar.
+    /// </summary>
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        var workArea = SystemParameters.WorkArea;
+        Width = Math.Min(Width, workArea.Width);
+        Height = Math.Min(Height, workArea.Height);
+        Left = workArea.Left + ((workArea.Width - Width) / 2);
+        Top = workArea.Top + ((workArea.Height - Height) / 2);
+    }
+
+    /// <summary>
     /// Só as plataformas ligadas nas Definições do Agent (settings.json partilhado) aparecem aqui
     /// — Steam ligada por omissão, Epic e GOG desligadas. Nunca fica vazio: se por acaso todas
     /// ficarem desligadas, mostra as 3 na mesma em vez de um seletor inutilizável.
@@ -224,6 +237,7 @@ public partial class MainWindow : Window
         FormatCardButton.Visibility = Visibility.Collapsed;
         _pendingNfcFormatConfig = null;
         NfcBlockLogPanel.Visibility = Visibility.Collapsed;
+        HideWriteProgress();
         ResetProtectCardPanel();
 
         _coverFetchCts?.Cancel();
@@ -438,7 +452,7 @@ public partial class MainWindow : Window
             : Strings.LS_Nfc_NoReaderDetected;
 
         NfcCardStatusText.Text = _presentNfcCard is { } present
-            ? Strings.LS_Nfc_CardDetected(present.Uid)
+            ? Strings.LS_Nfc_CardDetected(present.Uid, CardTypeDisplayName(present.CardType))
             : Strings.LS_Nfc_WaitingForCard;
     }
 
@@ -446,8 +460,15 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(() =>
         {
             _presentNfcCard = e;
-            NfcCardStatusText.Text = Strings.LS_Nfc_CardDetected(e.Uid);
+            NfcCardStatusText.Text = Strings.LS_Nfc_CardDetected(e.Uid, CardTypeDisplayName(e.CardType));
         });
+
+    private static string CardTypeDisplayName(MifareCardType cardType) => cardType switch
+    {
+        MifareCardType.Classic1K => "Mifare Classic 1K",
+        MifareCardType.Classic4K => "Mifare Classic 4K",
+        _ => Strings.LS_Nfc_CardTypeUnknown,
+    };
 
     private void OnNfcCardRemoved(object? sender, NfcCardPresence e) =>
         Dispatcher.Invoke(() =>
@@ -514,11 +535,15 @@ public partial class MainWindow : Window
         }
         else
         {
-            WriteToDrive(config);
+            await WriteToDriveAsync(config);
         }
     }
 
-    private void WriteToDrive(GameConfig config)
+    /// <summary>
+    /// Numa disquete real, verificar e escrever demora segundos (latência do motor, ~30-60 KB/s) —
+    /// por isso corre fora da thread de UI, com a barra de progresso a acompanhar os bytes escritos.
+    /// </summary>
+    private async Task WriteToDriveAsync(GameConfig config)
     {
         if (DriveCombo.SelectedItem is not string driveRoot)
         {
@@ -526,27 +551,43 @@ public partial class MainWindow : Window
             return;
         }
 
-        var check = _mediaWriter.Check(driveRoot, config, _coverBytes);
-
-        if (check.Status == MediaWriteCheckStatus.Blocked)
-        {
-            WriteStatusText.Text = check.Message;
-            return;
-        }
-
-        if (check.Status == MediaWriteCheckStatus.NeedsConfirmation)
-        {
-            var confirmed = MessageBox.Show(check.Message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirmed != MessageBoxResult.Yes)
-            {
-                WriteStatusText.Text = Strings.LS_WriteCancelled;
-                return;
-            }
-        }
+        var coverBytes = _coverBytes;
+        WriteButton.IsEnabled = false;
+        StartWriteProgress();
 
         try
         {
-            _mediaWriter.Write(driveRoot, config, _coverBytes, config.Cover);
+            var check = await Task.Run(() => _mediaWriter.Check(driveRoot, config, coverBytes));
+
+            if (check.Status == MediaWriteCheckStatus.Blocked)
+            {
+                WriteStatusText.Text = check.Message;
+                HideWriteProgress();
+                return;
+            }
+
+            if (check.Status == MediaWriteCheckStatus.NeedsConfirmation)
+            {
+                var confirmed = MessageBox.Show(check.Message, "FloppyGames", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (confirmed != MessageBoxResult.Yes)
+                {
+                    WriteStatusText.Text = Strings.LS_WriteCancelled;
+                    HideWriteProgress();
+                    return;
+                }
+            }
+
+            // Criado aqui, na thread de UI — um Progress<T> criado dentro do Task.Run nunca
+            // captura o contexto da UI (ver CreateNfcWriteProgress).
+            var progress = new Progress<MediaWriteProgress>(p =>
+            {
+                var percent = p.TotalBytes == 0 ? 100 : (int)(p.BytesWritten * 100 / p.TotalBytes);
+                SetWriteProgress(percent);
+                WriteStatusText.Text = Strings.LS_Drive_WriteProgress(percent);
+            });
+
+            await Task.Run(() => _mediaWriter.Write(driveRoot, config, coverBytes, config.Cover, progress));
+            SetWriteProgress(100);
             WriteStatusText.Text = Strings.LS_WriteSuccess(config.Title, driveRoot);
             _logger.Information(
                 "GAME.INI escrito em {Drive} para {Title} ({Platform}).", driveRoot, config.Title, config.Platform);
@@ -555,7 +596,32 @@ public partial class MainWindow : Window
         {
             _logger.Error(ex, "Falha ao escrever para {Drive}.", driveRoot);
             WriteStatusText.Text = Strings.LS_WriteFailed;
+            HideWriteProgress();
         }
+        finally
+        {
+            WriteButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>Mostra a barra em modo indeterminado — ainda a verificar o suporte, sem percentagem real para mostrar.</summary>
+    private void StartWriteProgress()
+    {
+        WriteProgressBar.Value = 0;
+        WriteProgressBar.IsIndeterminate = true;
+        WriteProgressBar.Visibility = Visibility.Visible;
+    }
+
+    private void SetWriteProgress(double percent)
+    {
+        WriteProgressBar.IsIndeterminate = false;
+        WriteProgressBar.Value = percent;
+    }
+
+    private void HideWriteProgress()
+    {
+        WriteProgressBar.IsIndeterminate = false;
+        WriteProgressBar.Visibility = Visibility.Collapsed;
     }
 
     /// <summary>
@@ -581,7 +647,7 @@ public partial class MainWindow : Window
         }
 
         SetNfcOperationInProgress(true);
-        ClearNfcBlockLog();
+        ResetNfcWriteDisplay();
         var nfcCardPassword = new AgentSettingsStore().Load().NfcCardPassword;
         IReadOnlyList<byte[]>? extraKeys = string.IsNullOrWhiteSpace(nfcCardPassword)
             ? null
@@ -622,6 +688,7 @@ public partial class MainWindow : Window
 
             var writeProgress = CreateNfcWriteProgress();
             await Task.Run(() => _nfcCardWriter.Write(card.ReaderName, card.CardType, config, writeProgress, extraKeys));
+            SetWriteProgress(100);
             WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
             _logger.Information(
                 "GAME.INI gravado no cartão NFC UID {Uid} para {Title} ({Platform}).", card.Uid, config.Title, config.Platform);
@@ -658,7 +725,7 @@ public partial class MainWindow : Window
 
         FormatCardButton.Visibility = Visibility.Collapsed;
         SetNfcOperationInProgress(true);
-        ClearNfcBlockLog();
+        ResetNfcWriteDisplay();
 
         try
         {
@@ -668,6 +735,7 @@ public partial class MainWindow : Window
 
             if (formatted)
             {
+                SetWriteProgress(100);
                 WriteStatusText.Text = Strings.LS_Nfc_WriteSuccess(config.Title, card.Uid);
                 _logger.Information(
                     "Cartão NFC UID {Uid} formatado e gravado via backdoor mágico para {Title} ({Platform}).",
@@ -724,7 +792,7 @@ public partial class MainWindow : Window
         }
 
         SetNfcOperationInProgress(true);
-        ClearNfcBlockLog();
+        ResetNfcWriteDisplay();
 
         try
         {
@@ -735,6 +803,7 @@ public partial class MainWindow : Window
 
             if (protectedCard)
             {
+                SetWriteProgress(100);
                 WriteStatusText.Text = Strings.LS_Nfc_ProtectSuccess(card.Uid);
                 _logger.Information("Cartão NFC UID {Uid} protegido com palavra-passe.", card.Uid);
                 _pendingNfcProtectCard = null;
@@ -780,18 +849,27 @@ public partial class MainWindow : Window
 
         var hasPassword = !string.IsNullOrWhiteSpace(new AgentSettingsStore().Load().NfcCardPassword);
         ProtectCardCheckBox.IsEnabled = !inProgress && _pendingNfcProtectCard is not null && hasPassword;
+
+        // Chamado no finally de todas as operações NFC: se terminou sem chegar aos 100% (falha,
+        // cartão bloqueado, cancelado), a barra desaparece em vez de ficar parada a meio.
+        if (!inProgress && (WriteProgressBar.IsIndeterminate || WriteProgressBar.Value < 100))
+        {
+            HideWriteProgress();
+        }
     }
 
-    private void ClearNfcBlockLog()
+    private void ResetNfcWriteDisplay()
     {
         NfcBlockLogBox.Clear();
         NfcBlockLogPanel.Visibility = Visibility.Visible;
+        StartWriteProgress();
     }
 
     /// <summary>Mostra "bloco X de Y" no estado e acrescenta uma linha ao registo de blocos com o conteúdo exato gravado.</summary>
     private Progress<NfcCardWriteProgress> CreateNfcWriteProgress() =>
         new(p =>
         {
+            SetWriteProgress(p.Current * 100.0 / p.Total);
             WriteStatusText.Text = Strings.LS_Nfc_WriteProgress(p.Current, p.Total);
             var hex = string.Join(' ', p.Data.Select(b => b.ToString("X2")));
             NfcBlockLogBox.AppendText($"[{p.Current,3}/{p.Total,-3}] setor {p.Sector,2} bloco {p.AbsoluteBlock,3}: {hex}{Environment.NewLine}");

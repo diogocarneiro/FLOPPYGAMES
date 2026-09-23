@@ -159,7 +159,9 @@ public static class Strings
     public static string LS_Nfc_NoReaderDetected => Get("LS_Nfc_NoReaderDetected");
     public static string LS_Nfc_ReaderDetected(string readerName) => Format("LS_Nfc_ReaderDetected", readerName);
     public static string LS_Nfc_WaitingForCard => Get("LS_Nfc_WaitingForCard");
-    public static string LS_Nfc_CardDetected(string uid) => Format("LS_Nfc_CardDetected", uid);
+    public static string LS_Nfc_CardDetected(string uid, string cardType) => Format("LS_Nfc_CardDetected", uid, cardType);
+    public static string LS_Nfc_CardTypeUnknown => Get("LS_Nfc_CardTypeUnknown");
+    public static string LS_Drive_WriteProgress(int percent) => Format("LS_Drive_WriteProgress", percent);
     public static string LS_Nfc_RefreshReaderButton => Get("LS_Nfc_RefreshReaderButton");
     public static string LS_Nfc_WriteSuccess(string title, string uid) => Format("LS_Nfc_WriteSuccess", title, uid);
     public static string LS_Nfc_WriteFailed => Get("LS_Nfc_WriteFailed");
