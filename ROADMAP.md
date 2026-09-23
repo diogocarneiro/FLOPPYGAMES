@@ -80,7 +80,16 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
 - [x] Suporte a `FloppyGamesSetup.exe /configure` para alternar o arranque automático pós-instalação, sem passar pelo assistente completo.
 - [x] Desinstalação limpa: remove ficheiros, atalhos e a entrada de arranque automático (`CurUninstallStepChanged`, cobre qualquer origem da entrada — tarefa, `/configure`, ou Definições do Agent). Nunca toca em suportes amovíveis, e preserva deliberadamente os logs do utilizador em `%LOCALAPPDATA%\FloppyGames\logs`.
 - [ ] Assinatura do executável (*code signing*) — exige um certificado adquirido; fora do alcance deste ambiente. Sem isto, o Windows SmartScreen vai avisar na primeira execução — aceitável para um projeto pessoal, mas a documentar para quem for distribuir mais largamente.
-- [ ] Pipeline de release (GitHub Actions) — build + empacotamento automático a cada tag; ainda não configurado.
+- [x] Pipeline de release (GitHub Actions, `.github/workflows/release.yml`): cada tag `vX.Y.Z`
+  corre os testes, compila o instalador com a versão da tag (`build.ps1 -Version`, que chega ao
+  instalador e ao rodapé das apps sem editar ficheiros à mão) e publica-o numa GitHub Release;
+  também corre à mão, deixando só o instalador como artefacto. Validado localmente com os mesmos
+  comandos do workflow (testes em Release, `build.ps1 -Version 9.9.9` → instalador e apps a 9.9.9) —
+  o primeiro run no GitHub só acontece com o primeiro push de uma tag. Ao preparar o pipeline
+  descobriu-se que o `proxmark3.exe` incluído dependia de 9 DLLs do MSYS2 que só existiam no PC de
+  desenvolvimento (fora dele terminava com `0xC0000135`, "DLL not found" — o suporte Proxmark3
+  falhava em qualquer outra instalação); passaram a ser incluídos ao lado dele e no instalador, com
+  as licenças em `tools/proxmark3/NOTICE.md`.
 
 **Duas armadilhas reais do Inno Setup encontradas e corrigidas ao testar** (detalhadas em [src/FloppyGames.Installer/README.md](src/FloppyGames.Installer/README.md)):
 - A constante `{app}` não está disponível dentro de `InitializeSetup` (só depois da página de escolha de pasta) — `/configure` precisa do caminho de instalação antes disso, por isso passou a lê-lo da própria chave de desinstalação que o Inno já escreve, em vez de `{app}`.

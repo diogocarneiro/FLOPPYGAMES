@@ -1,0 +1,61 @@
+# Pipeline de release: cada tag vX.Y.Z compila, testa e empacota o FloppyGames, e publica o
+# instalador numa GitHub Release. Correr à mão (separador Actions → "Run workflow") faz o mesmo
+# mas só deixa o instalador como artefacto do run, sem criar release.
+#
+# Para lançar uma versão:  git tag v0.2.0  &&  git push origin v0.2.0
+# A versão da tag é usada no instalador e no rodapé das apps (build.ps1 -Version) — não é
+# preciso editar Directory.Build.props nem FloppyGames.iss antes.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, test & package
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        run: dotnet test tests/FloppyGames.Core.Tests/FloppyGames.Core.Tests.csproj -c Release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $buildArgs = @()
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            # "v0.2.0" -> "0.2.0"; o build.ps1 rejeita tudo o que não seja X.Y.Z.
+            $buildArgs = @('-Version', $env:GITHUB_REF_NAME.TrimStart('v'))
+          }
+          ./src/FloppyGames.Installer/build.ps1 @buildArgs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FloppyGamesSetup
+          path: src/FloppyGames.Installer/Output/FloppyGamesSetup.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: FloppyGames ${{ github.ref_name }}
+          files: src/FloppyGames.Installer/Output/FloppyGamesSetup.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true

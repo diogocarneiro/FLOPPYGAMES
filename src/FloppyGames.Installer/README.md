@@ -14,6 +14,23 @@ Isto publica as duas apps como *self-contained* (`win-x64`, sem exigir .NET inst
 `publish\Agent` e `publish\LabelStudio`, e depois compila `FloppyGames.iss`. O instalador final fica em
 `Output\FloppyGamesSetup.exe`. Nenhuma destas pastas é versionada (ver `.gitignore`).
 
+`.\build.ps1 -Version 0.2.0` sobrepõe a versão de `Directory.Build.props` e de `FloppyGames.iss` —
+fica essa no instalador e no rodapé das duas apps.
+
+## Release automático (GitHub Actions)
+
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml): cada tag `vX.Y.Z` enviada
+para o GitHub corre os testes, compila o instalador com a versão da tag (`build.ps1 -Version`) e
+publica-o numa GitHub Release, com notas geradas a partir dos commits:
+
+```powershell
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Também se pode correr à mão (separador Actions → *Release* → *Run workflow*): nesse caso só deixa o
+instalador como artefacto do run, sem criar release, com a versão de `Directory.Build.props`.
+
 ## O que o instalador faz
 
 - Instala em `%LOCALAPPDATA%\Programs\FloppyGames` — sem privilégios de administrador (`PrivilegesRequired=lowest`),

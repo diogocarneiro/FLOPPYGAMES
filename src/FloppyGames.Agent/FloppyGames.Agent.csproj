@@ -7,7 +7,9 @@
   <ItemGroup>
     <None Include="Assets\floppy-motor.wav" CopyToOutputDirectory="PreserveNewest" />
     <Resource Include="Assets\AppIcon.ico" />
-    <None Include="..\..\tools\proxmark3\proxmark3.exe" LinkBase="Tools\proxmark3">
+    <!-- O cliente Proxmark3 (compilado com MSYS2) precisa destes DLLs ao lado — sem eles falha com
+         "DLL not found" em qualquer PC sem MSYS2 no PATH. Ver tools/proxmark3/NOTICE.md. -->
+    <None Include="..\..\tools\proxmark3\proxmark3.exe;..\..\tools\proxmark3\*.dll" LinkBase="Tools\proxmark3">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

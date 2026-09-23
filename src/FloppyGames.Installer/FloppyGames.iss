@@ -3,8 +3,12 @@
 ; publish\Agent e publish\LabelStudio já existam nesta pasta.
 
 #define MyAppName "FloppyGames"
-; Manter igual a <Version> em Directory.Build.props (a versão mostrada no rodapé das apps).
-#define MyAppVersion "0.1.0"
+; Manter igual a <Version> em Directory.Build.props (a versão mostrada no rodapé das apps). O
+; build.ps1 -Version (usado pelo pipeline de release) passa-a com /DMyAppVersion=..., e aí tem
+; prioridade sobre este valor.
+#ifndef MyAppVersion
+  #define MyAppVersion "0.1.0"
+#endif
 #define MyAppPublisher "Diogo Carneiro"
 #define MyAppURL "https://www.diogocarneiro.fr"
 #define MyAppCopyright "© 2026 Diogo Carneiro. Tous droits réservés."
