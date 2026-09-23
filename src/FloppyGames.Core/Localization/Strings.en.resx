@@ -74,8 +74,8 @@
   <data name="Settings_PlatformsDescription" xml:space="preserve"><value>Choose which platforms appear in Label Studio when creating a floppy. The Agent still launches any GAME.INI already created, regardless of this.</value></data>
   <data name="Settings_PlatformEnabled" xml:space="preserve"><value>{0} enabled.</value></data>
   <data name="Settings_PlatformDisabled" xml:space="preserve"><value>{0} disabled.</value></data>
-  <data name="Settings_NfcEnabled" xml:space="preserve"><value>Enable NFC/RFID card detection (PC/SC reader)</value></data>
-  <data name="Settings_NfcDescription" xml:space="preserve"><value>Experimental feature: requires a physical PC/SC reader (e.g. ACR122U) and Mifare Classic cards. Never tested against real hardware — only enable this if you have one. Restart the app to apply this change.</value></data>
+  <data name="Settings_NfcEnabled" xml:space="preserve"><value>Enable NFC/RFID card detection (Proxmark3 or PC/SC reader)</value></data>
+  <data name="Settings_NfcDescription" xml:space="preserve"><value>Lets you use Mifare Classic 1K/4K cards instead of floppy disks, with a Proxmark3 reader (tested) or a PC/SC reader (e.g. ACR122U). Restart the app to apply this change.</value></data>
   <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>NFC detection enabled.</value></data>
   <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>NFC detection disabled.</value></data>
   <data name="Settings_NfcCardPasswordLabel" xml:space="preserve"><value>NFC card protection password (optional)</value></data>
@@ -83,7 +83,14 @@
   <data name="Settings_NfcCardPasswordSaved" xml:space="preserve"><value>NFC protection password saved.</value></data>
   <data name="Settings_NfcCardPasswordRemoved" xml:space="preserve"><value>NFC protection password removed.</value></data>
   <data name="Settings_AboutLabel" xml:space="preserve"><value>About</value></data>
-  <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames turns a physical 3.5" floppy disk (or a USB drive) into a launch key for your Steam, Epic Games or GOG library. Insert the media prepared with Label Studio: the game starts automatically. Remove it: the game closes.</value></data>
+  <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames turns a physical 3.5" floppy disk, a USB stick or an NFC card into a launch key for your Steam, Epic Games and GOG Galaxy games. Insert the media: the game starts. Remove it: the game closes.
+
+• Launch screen with the game's cover, playtime, size and achievements (the latter with the optional Steam Web API key).
+• Several media at once, each with its own game.
+• Label Studio: pick an installed game, with process, description and cover filled in automatically, write it to a floppy, USB stick or NFC card with a progress bar, and print or export the label.
+• Mifare Classic 1K/4K NFC cards, with a Proxmark3 or PC/SC reader: read, write, format and reprogram, with optional password protection — the card's UID is never changed.
+• Tray icon, start with Windows, floppy motor sound, CRT effect and 5 languages.
+• Everything stays local — the Internet is only used for covers and, if you want, achievements.</value></data>
   <data name="Settings_AboutCreatedBy" xml:space="preserve"><value>Created by Diogo Carneiro</value></data>
 
   <!-- Tray icon -->

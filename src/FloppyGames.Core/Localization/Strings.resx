@@ -74,8 +74,8 @@
   <data name="Settings_PlatformsDescription" xml:space="preserve"><value>Choisis les plateformes qui apparaissent dans Label Studio lors de la création d'une disquette. L'Agent continue de lancer n'importe quel GAME.INI déjà créé, indépendamment de ceci.</value></data>
   <data name="Settings_PlatformEnabled" xml:space="preserve"><value>{0} activé.</value></data>
   <data name="Settings_PlatformDisabled" xml:space="preserve"><value>{0} désactivé.</value></data>
-  <data name="Settings_NfcEnabled" xml:space="preserve"><value>Activer la détection de cartes NFC/RFID (lecteur PC/SC)</value></data>
-  <data name="Settings_NfcDescription" xml:space="preserve"><value>Fonctionnalité expérimentale : nécessite un lecteur PC/SC physique (ex. ACR122U) et des cartes Mifare Classic. N'a jamais été testée sur un vrai lecteur — active-la seulement si tu en as un. Redémarre l'application pour appliquer ce changement.</value></data>
+  <data name="Settings_NfcEnabled" xml:space="preserve"><value>Activer la détection de cartes NFC/RFID (lecteur Proxmark3 ou PC/SC)</value></data>
+  <data name="Settings_NfcDescription" xml:space="preserve"><value>Permet d'utiliser des cartes Mifare Classic 1K/4K à la place des disquettes, avec un lecteur Proxmark3 (testé) ou un lecteur PC/SC (ex. ACR122U). Redémarre l'application pour appliquer ce changement.</value></data>
   <data name="Settings_NfcEnabledOn" xml:space="preserve"><value>Détection NFC activée.</value></data>
   <data name="Settings_NfcEnabledOff" xml:space="preserve"><value>Détection NFC désactivée.</value></data>
   <data name="Settings_NfcCardPasswordLabel" xml:space="preserve"><value>Mot de passe de protection des cartes NFC (facultatif)</value></data>
@@ -83,7 +83,14 @@
   <data name="Settings_NfcCardPasswordSaved" xml:space="preserve"><value>Mot de passe de protection NFC enregistré.</value></data>
   <data name="Settings_NfcCardPasswordRemoved" xml:space="preserve"><value>Mot de passe de protection NFC supprimé.</value></data>
   <data name="Settings_AboutLabel" xml:space="preserve"><value>À propos</value></data>
-  <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames transforme une disquette physique 3.5" (ou une clé USB) en clé de lancement pour ta bibliothèque Steam, Epic Games ou GOG. Insère le support préparé avec Label Studio : le jeu démarre automatiquement. Retire-le : le jeu se ferme.</value></data>
+  <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames transforme une disquette physique 3.5", une clé USB ou une carte NFC en clé de lancement pour tes jeux Steam, Epic Games et GOG Galaxy. Insère le support : le jeu démarre. Retire-le : le jeu se ferme.
+
+• Écran de démarrage avec la jaquette, le temps de jeu, la taille et les succès du jeu (ces derniers avec la clé Steam Web API facultative).
+• Plusieurs supports en même temps, chacun avec son jeu.
+• Label Studio : choisis un jeu installé, avec processus, description et jaquette remplis automatiquement, écris-le sur une disquette, une clé USB ou une carte NFC avec barre de progression, et imprime ou exporte l'étiquette.
+• Cartes NFC Mifare Classic 1K/4K, avec un lecteur Proxmark3 ou PC/SC : lire, écrire, formater et reprogrammer, avec protection facultative par mot de passe — l'UID de la carte n'est jamais modifié.
+• Icône dans la zone de notification, démarrage avec Windows, son du moteur de disquette, effet CRT et 5 langues.
+• Tout reste local — Internet ne sert qu'aux jaquettes et, si tu le souhaites, aux succès.</value></data>
   <data name="Settings_AboutCreatedBy" xml:space="preserve"><value>Créé par Diogo Carneiro</value></data>
 
   <!-- Tray icon -->
