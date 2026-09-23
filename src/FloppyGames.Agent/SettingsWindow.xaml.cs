@@ -66,6 +66,8 @@ public partial class SettingsWindow : Window
         _initializing = false;
     }
 
+    private void OnSourceInitialized(object? sender, EventArgs e) => WindowPlacement.FitToWorkArea(this);
+
     private void OnAutostartToggled(object sender, RoutedEventArgs e)
     {
         if (_initializing)

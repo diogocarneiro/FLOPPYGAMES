@@ -6,8 +6,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FloppyGames.Agent"
         mc:Ignorable="d"
-        Title="FloppyGames Agent" Height="450" Width="640"
-        WindowStartupLocation="CenterScreen">
+        Title="FloppyGames Agent" Height="720" Width="1280"
+        WindowStartupLocation="CenterScreen" SourceInitialized="OnSourceInitialized">
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
             <TextBlock Text="FloppyGames Agent" FontSize="20" FontWeight="Bold" />

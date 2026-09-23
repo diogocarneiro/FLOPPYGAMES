@@ -157,6 +157,8 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
+    private void OnSourceInitialized(object? sender, EventArgs e) => WindowPlacement.FitToWorkArea(this);
+
     /// <summary>Encerramento real do Agent, chamado a partir do menu "Sair" da bandeja.</summary>
     public void Shutdown()
     {
