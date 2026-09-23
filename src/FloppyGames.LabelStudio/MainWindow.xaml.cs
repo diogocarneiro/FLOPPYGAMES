@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     private readonly EpicGameLibraryScanner _epicScanner;
     private readonly GogGameLibraryScanner _gogScanner;
     private readonly GameExecutableFinder _executableFinder;
-    private readonly ICoverArtProvider _coverArtProvider;
+    private readonly GameCoverArtProvider _coverArtProvider;
     private readonly FloppyMediaWriter _mediaWriter;
     private readonly GameCatalog _catalog;
     private readonly INfcReaderDetector _nfcReaderDetector;
@@ -57,7 +57,7 @@ public partial class MainWindow : Window
         _epicScanner = new EpicGameLibraryScanner(fileSystem);
         _gogScanner = new GogGameLibraryScanner();
         _executableFinder = new GameExecutableFinder(fileSystem);
-        _coverArtProvider = new SteamCdnCoverArtProvider();
+        _coverArtProvider = new GameCoverArtProvider(_epicScanner, _gogScanner);
         _mediaWriter = new FloppyMediaWriter(new FileSystemDriveInspector());
         _catalog = new GameCatalog();
 
@@ -260,18 +260,8 @@ public partial class MainWindow : Window
             WriteStatusText.Text = Strings.LS_FilledFromCatalog;
         }
 
-        // Só a Steam tem um CDN de capas público e sem autenticação — Epic/GOG ficam com a capa
-        // do catálogo (se existir) ou a escolha manual de imagem local. Sem isto ficar explícito,
-        // a caixa vazia parece avariada.
-        if (game.Platform == GamePlatform.Steam && game.SteamAppId is { } appId)
-        {
-            ShowNoCoverMessage(Strings.LS_FetchingSteamCover);
-            _ = LoadCoverAsync(appId, catalogEntry);
-        }
-        else if (catalogEntry is null || !TryLoadCatalogCover(catalogEntry))
-        {
-            ShowNoCoverMessage(Strings.LS_NoAutoCoverForPlatform(PlatformDisplayName(game.Platform)));
-        }
+        ShowNoCoverMessage(Strings.LS_FetchingCover(PlatformDisplayName(game.Platform)));
+        _ = LoadCoverAsync(game, catalogEntry);
     }
 
     private static string ResolveCatalogDescription(CatalogEntry entry)
@@ -326,7 +316,7 @@ public partial class MainWindow : Window
         NoCoverText.Visibility = Visibility.Visible;
     }
 
-    private async Task LoadCoverAsync(int appId, CatalogEntry? catalogEntry)
+    private async Task LoadCoverAsync(DiscoveredGame game, CatalogEntry? catalogEntry)
     {
         _coverFetchCts?.Cancel();
         var cts = new CancellationTokenSource();
@@ -338,7 +328,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var bytes = await _coverArtProvider.TryDownloadCoverAsync(appId, cts.Token);
+            var bytes = await _coverArtProvider.TryDownloadCoverAsync(game, cts.Token);
             if (cts.IsCancellationRequested)
             {
                 return;
@@ -348,7 +338,7 @@ public partial class MainWindow : Window
             {
                 if (catalogEntry is null || !TryLoadCatalogCover(catalogEntry))
                 {
-                    ShowNoCoverMessage(Strings.LS_NoCoverFoundSteam);
+                    ShowNoCoverMessage(Strings.LS_NoCoverFound(PlatformDisplayName(game.Platform)));
                 }
 
                 return;

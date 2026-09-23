@@ -140,9 +140,8 @@ public static class Strings
     public static string LS_IdentifierLabelSteam => Get("LS_IdentifierLabelSteam");
     public static string LS_IdentifierLabelEpic => Get("LS_IdentifierLabelEpic");
     public static string LS_IdentifierLabelGog => Get("LS_IdentifierLabelGog");
-    public static string LS_FetchingSteamCover => Get("LS_FetchingSteamCover");
-    public static string LS_NoAutoCoverForPlatform(string platform) => Format("LS_NoAutoCoverForPlatform", platform);
-    public static string LS_NoCoverFoundSteam => Get("LS_NoCoverFoundSteam");
+    public static string LS_FetchingCover(string platform) => Format("LS_FetchingCover", platform);
+    public static string LS_NoCoverFound(string platform) => Format("LS_NoCoverFound", platform);
     public static string LS_ChooseCoverDialogTitle => Get("LS_ChooseCoverDialogTitle");
     public static string LS_ImagesFilterWord => Get("LS_ImagesFilterWord");
     public static string LS_FilledFromCatalog => Get("LS_FilledFromCatalog");

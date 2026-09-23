@@ -133,9 +133,8 @@
   <data name="LS_IdentifierLabelSteam" xml:space="preserve"><value>AppID (Steam)</value></data>
   <data name="LS_IdentifierLabelEpic" xml:space="preserve"><value>Identificador (Epic: namespace:item:app)</value></data>
   <data name="LS_IdentifierLabelGog" xml:space="preserve"><value>ID (GOG)</value></data>
-  <data name="LS_FetchingSteamCover" xml:space="preserve"><value>A obter capa da Steam...</value></data>
-  <data name="LS_NoAutoCoverForPlatform" xml:space="preserve"><value>Sem capa automática para {0} — escolhe uma imagem local abaixo.</value></data>
-  <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Sem capa encontrada na Steam — escolhe uma imagem local abaixo.</value></data>
+  <data name="LS_FetchingCover" xml:space="preserve"><value>A obter a capa de {0}...</value></data>
+  <data name="LS_NoCoverFound" xml:space="preserve"><value>Sem capa encontrada em {0} — escolhe uma imagem local abaixo.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Escolher capa</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Imagens</value></data>
   <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Título, processo e descrição preenchidos a partir do catálogo local.</value></data>

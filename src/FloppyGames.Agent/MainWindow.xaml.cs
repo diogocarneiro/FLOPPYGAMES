@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     private readonly GameSessionManager _sessionManager;
     private readonly GameLaunchSummaryBuilder _summaryBuilder;
     private readonly AgentSettingsStore _settingsStore;
-    private readonly ICoverArtProvider _coverArtProvider = new SteamCdnCoverArtProvider();
+    private readonly GameCoverArtProvider _coverArtProvider;
     private readonly Dictionary<string, SplashWindow> _splashWindows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, SplashWindow> _nfcSplashWindows = new(StringComparer.OrdinalIgnoreCase);
     private IDisposable? _nfcBackendDisposable;
@@ -63,6 +63,7 @@ public partial class MainWindow : Window
         var steamPathProvider = new RegistrySteamPathProvider();
         var epicLibraryScanner = new EpicGameLibraryScanner(steamFileSystem);
         var gogLibraryScanner = new GogGameLibraryScanner();
+        _coverArtProvider = new GameCoverArtProvider(epicLibraryScanner, gogLibraryScanner);
         _settingsStore = new AgentSettingsStore();
         _summaryBuilder = new GameLaunchSummaryBuilder(
             new SteamLibraryScanner(steamFileSystem, steamPathProvider),
@@ -276,18 +277,15 @@ public partial class MainWindow : Window
             AppendStatus(Strings.MainWindow_Launching(e.Config.Title));
 
             // Um cartão NFC não tem espaço para uma capa — mas o jogo já está instalado, por
-            // isso a Steam (única com CDN público sem autenticação) dá para ir buscá-la
-            // diretamente em vez de exigir que esteja gravada no suporte.
-            if (e.Config.Platform == GamePlatform.Steam && e.Config.AppId is { } appId)
-            {
-                _ = UpdateNfcSplashCoverAsync(e.Uid, appId, splash);
-            }
+            // isso vai-se buscá-la à origem da plataforma (Steam, Epic ou GOG) em vez de exigir
+            // que esteja gravada no suporte.
+            _ = UpdateNfcSplashCoverAsync(e.Uid, e.Config, splash);
         });
 
     /// <summary>Espelha <see cref="UpdateSplashSummaryAsync"/>: corre em segundo plano e só aplica se a splash ainda for a atual para este cartão.</summary>
-    private async Task UpdateNfcSplashCoverAsync(string uid, int appId, SplashWindow splash)
+    private async Task UpdateNfcSplashCoverAsync(string uid, GameConfig config, SplashWindow splash)
     {
-        var coverBytes = await _coverArtProvider.TryDownloadCoverAsync(appId, CancellationToken.None);
+        var coverBytes = await _coverArtProvider.TryDownloadCoverAsync(config, CancellationToken.None);
         if (coverBytes is null)
         {
             return;

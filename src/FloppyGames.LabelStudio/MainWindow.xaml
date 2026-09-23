@@ -32,7 +32,15 @@
 
             <TextBlock x:Name="PlatformLabel" DockPanel.Dock="Top" Style="{StaticResource FieldLabel}" />
             <ComboBox x:Name="PlatformCombo" DockPanel.Dock="Top" Margin="0,0,0,12"
-                      DisplayMemberPath="DisplayName" SelectionChanged="OnPlatformChanged" />
+                      DisplayMemberPath="DisplayName" SelectionChanged="OnPlatformChanged">
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="ComboBoxItem">
+                        <!-- Mesma razão da lista de jogos abaixo: sem isto, leitores de ecrã ouvem o
+                             ToString() do registo PlatformOption em vez de "Epic Games". -->
+                        <Setter Property="AutomationProperties.Name" Value="{Binding DisplayName}" />
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+            </ComboBox>
 
             <TextBlock x:Name="InstalledGamesLabel" DockPanel.Dock="Top" Style="{StaticResource FieldLabel}" />
             <TextBox x:Name="SearchBox" DockPanel.Dock="Top" Margin="0,0,0,8"

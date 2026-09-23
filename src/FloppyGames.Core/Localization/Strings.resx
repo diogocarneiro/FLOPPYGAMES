@@ -133,9 +133,8 @@
   <data name="LS_IdentifierLabelSteam" xml:space="preserve"><value>AppID (Steam)</value></data>
   <data name="LS_IdentifierLabelEpic" xml:space="preserve"><value>Identifiant (Epic : namespace:item:app)</value></data>
   <data name="LS_IdentifierLabelGog" xml:space="preserve"><value>ID (GOG)</value></data>
-  <data name="LS_FetchingSteamCover" xml:space="preserve"><value>Récupération de la jaquette Steam...</value></data>
-  <data name="LS_NoAutoCoverForPlatform" xml:space="preserve"><value>Pas de jaquette automatique pour {0} — choisis une image locale ci-dessous.</value></data>
-  <data name="LS_NoCoverFoundSteam" xml:space="preserve"><value>Aucune jaquette trouvée sur Steam — choisis une image locale ci-dessous.</value></data>
+  <data name="LS_FetchingCover" xml:space="preserve"><value>Récupération de la jaquette depuis {0}...</value></data>
+  <data name="LS_NoCoverFound" xml:space="preserve"><value>Aucune jaquette trouvée sur {0} — choisis une image locale ci-dessous.</value></data>
   <data name="LS_ChooseCoverDialogTitle" xml:space="preserve"><value>Choisir une jaquette</value></data>
   <data name="LS_ImagesFilterWord" xml:space="preserve"><value>Images</value></data>
   <data name="LS_FilledFromCatalog" xml:space="preserve"><value>Titre, processus et description remplis à partir du catalogue local.</value></data>

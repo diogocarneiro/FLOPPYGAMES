@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FloppyGames.Core.Configuration;
 using Microsoft.Data.Sqlite;
 
@@ -22,7 +23,7 @@ namespace FloppyGames.Core.Platforms;
 /// em lista vazia / <c>null</c>, nunca numa exceção não tratada.
 /// </para>
 /// </summary>
-public sealed class GogGameLibraryScanner
+public sealed partial class GogGameLibraryScanner
 {
     private static readonly string DefaultDatabasePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -42,12 +43,26 @@ public sealed class GogGameLibraryScanner
             return [];
         }
 
+        // Products.name vem a NULL para jogos instalados fora da biblioteca comprada (ex. demos
+        // instaladas pelo Galaxy) — verificado numa base de dados real com dois jogos instalados e
+        // os dois assim, o que fazia a lista sair vazia. O título que o próprio Galaxy mostra está
+        // em GamePieces ('title', JSON); LimitedDetails.title é o último recurso.
         const string sql = """
-            SELECT p.id, p.name, ibp.installationPath, ds.diskSize
+            SELECT ibp.productId,
+                   COALESCE(
+                       NULLIF(p.name, ''),
+                       (SELECT json_extract(gp.value, '$.title')
+                        FROM GamePieces gp JOIN GamePieceTypes gpt ON gpt.id = gp.gamePieceTypeId
+                        WHERE gp.releaseKey = 'gog_' || ibp.productId AND gpt.type = 'title'
+                        LIMIT 1),
+                       (SELECT ld.title FROM LimitedDetails ld
+                        WHERE ld.productId = ibp.productId AND ld.title IS NOT NULL
+                        LIMIT 1)) AS name,
+                   ibp.installationPath, ds.diskSize
             FROM InstalledBaseProducts ibp
-            JOIN Products p ON p.id = ibp.productId
-            LEFT JOIN DiskSizes ds ON ds.gameReleaseKey = 'gog_' || p.id
-            ORDER BY p.name COLLATE NOCASE
+            LEFT JOIN Products p ON p.id = ibp.productId
+            LEFT JOIN DiskSizes ds ON ds.gameReleaseKey = 'gog_' || ibp.productId
+            ORDER BY name COLLATE NOCASE
             """;
 
         try
@@ -129,6 +144,47 @@ public sealed class GogGameLibraryScanner
             return null;
         }
     }
+
+    /// <summary>
+    /// O URL da capa vertical do jogo, tal como o GOG Galaxy a guarda
+    /// (<c>GamePieces</c> do tipo <c>originalImages</c>, campo <c>verticalCover</c>). O Galaxy
+    /// guarda-a em WebP, que o WPF só descodifica se a extensão WebP do Windows estiver instalada
+    /// — o mesmo endereço com <c>.jpg</c> devolve um JPEG real (verificado ao vivo), por isso é
+    /// esse que se pede.
+    /// </summary>
+    public string? TryResolveCoverUrl(string gogGameId)
+    {
+        if (!long.TryParse(gogGameId, out var productId) || !File.Exists(_databasePath))
+        {
+            return null;
+        }
+
+        const string sql = """
+            SELECT json_extract(gp.value, '$.verticalCover')
+            FROM GamePieces gp JOIN GamePieceTypes gpt ON gpt.id = gp.gamePieceTypeId
+            WHERE gp.releaseKey = $releaseKey AND gpt.type = 'originalImages'
+            LIMIT 1
+            """;
+
+        try
+        {
+            using var connection = OpenReadOnly();
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.AddWithValue("$releaseKey", $"gog_{productId}");
+
+            return command.ExecuteScalar() is string url && !string.IsNullOrWhiteSpace(url)
+                ? WebpExtension().Replace(url, ".jpg")
+                : null;
+        }
+        catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    [GeneratedRegex(@"\.webp(?=\?|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex WebpExtension();
 
     private SqliteConnection OpenReadOnly()
     {

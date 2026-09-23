@@ -135,8 +135,19 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   descobriu-se que o GOG Galaxy 2.0 não usa o Registo de todo, guardando tudo numa base de dados
   SQLite própria (`galaxy-2.0.db`). Reescrito para ler dessa base de dados (`Microsoft.Data.Sqlite`,
   só-leitura), com o esquema confirmado via `sqlite3` contra uma instalação real e em execução do
-  GOG Galaxy, e testes automatizados cobrindo as consultas contra esse esquema real. A biblioteca de
-  teste estava vazia, por isso falta a confirmação final com um jogo GOG realmente instalado.
+  GOG Galaxy, e testes automatizados cobrindo as consultas contra esse esquema real. **Confirmado
+  depois com dois jogos GOG realmente instalados** (duas demos) — e foi isso que apanhou um bug: os
+  dois tinham `Products.name` a NULL, e o scanner descartava-os, por isso a lista saía vazia. O
+  título passou a vir de `GamePieces` (tipo `title`, o nome que o próprio Galaxy mostra), com
+  `Products.name` e `LimitedDetails.title` como alternativas.
+- [x] Capas automáticas também para Epic e GOG (antes só a Steam tinha), sem autenticação nem API
+  key: Epic pela cache de catálogo local da Epic Games Launcher (`catcache.bin`, JSON em Base64,
+  imagem `DieselGameBoxTall`), pedida já redimensionada ao CDN da Epic (a original chegava a 2.4 MB
+  em PNG, mais do que cabe numa disquete — assim fica um JPEG de ~87 KB a 600×800); GOG pela base
+  de dados do Galaxy (`GamePieces` tipo `originalImages`, `verticalCover`), pedida em `.jpg` em vez
+  do `.webp` original, que o WPF só descodifica com a extensão WebP do Windows instalada. Usado pelo
+  Label Studio e pela splash do Agent em lançamentos por cartão NFC. **Verificado** com todos os
+  jogos instalados nesta máquina (4 Steam, 3 Epic, 2 GOG — todos com capa).
   Detalhe em [README.md](README.md#nota-técnica-suporte-multi-plataforma).
 - [ ] Telemetria local opcional: histórico de jogos "inseridos", tempo de jogo por disquete (nostálgico "tempo de cartucho").
 - [x] Suporte a cartões NFC/RFID (Mifare Classic 1K/4K) como gatilho alternativo à disquete/pen,
