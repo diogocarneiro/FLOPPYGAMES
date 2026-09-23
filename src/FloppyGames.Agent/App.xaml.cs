@@ -18,8 +18,9 @@ public partial class App : System.Windows.Application
         _trayIcon = new TrayIconController(_mainWindow, _mainWindow.SessionManager);
         _trayIcon.ExitRequested += OnExitRequested;
 
-        _mainWindow.Show();
-
+        // Arranca minimizado à bandeja — só a janela principal ao clicar no ícone ou no menu
+        // "Abrir FloppyGames" (ShutdownMode="OnExplicitShutdown" no App.xaml permite isto: o
+        // Agent continua vivo com zero janelas visíveis).
         _ = _trayIcon.CheckForUpdatesOnStartupAsync();
     }
 

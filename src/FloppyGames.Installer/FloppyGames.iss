@@ -134,8 +134,11 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
     ValueName: "FloppyGamesAgent"; ValueData: """{app}\Agent\{#AgentExeName}"""; Tasks: autostart
 
 [Run]
+; Sem skipifsilent de propósito: uma atualização automática corre com /VERYSILENT
+; (ver GitHubReleaseUpdateChecker/TrayIconController) e precisa que o Agent reabra sozinho no
+; fim — como agora arranca minimizado à bandeja (ver App.xaml.cs), isto não mostra nenhuma janela.
 Filename: "{app}\Agent\{#AgentExeName}"; Description: "{cm:RunAfterInstallDescription}"; \
-    Flags: postinstall nowait skipifsilent
+    Flags: postinstall nowait
 
 [Code]
 const

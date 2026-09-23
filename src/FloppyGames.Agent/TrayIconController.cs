@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Forms;
 using FloppyGames.Core;
@@ -73,8 +74,10 @@ public sealed class TrayIconController : IDisposable
 
     /// <summary>
     /// Verifica a existência de uma versão nova ao arrancar, se a opção estiver ativa nas
-    /// Definições — nunca bloqueia o arranque do Agent (é chamada em segundo plano, sem esperar
-    /// por ela) nem incomoda se falhar (sem ligação, GitHub em baixo): fica só sem o aviso.
+    /// Definições, e se encontrar uma instala-a sozinha (silenciosa, sem assistente) — nunca
+    /// bloqueia o arranque do Agent (é chamada em segundo plano, sem esperar por ela) nem
+    /// incomoda se falhar (sem ligação, GitHub em baixo, release sem instalador anexado): fica
+    /// só com o item do menu como alternativa manual.
     /// </summary>
     public async Task CheckForUpdatesOnStartupAsync()
     {
@@ -92,12 +95,35 @@ public sealed class TrayIconController : IDisposable
             return;
         }
 
-        PendingUpdate = result.Update;
-        var version = result.Update!.Version.ToString();
+        var update = result.Update!;
+        PendingUpdate = update;
+        var version = update.Version.ToString();
 
         _updateMenuItem.Text = Strings.Tray_UpdateAvailable(version);
         _updateMenuItem.Visible = true;
+
+        if (update.InstallerUrl is null)
+        {
+            // A release não tem instalador anexado — não há nada para instalar sozinho; fica só
+            // o aviso e o item do menu, que abre as Definições para o utilizador tratar disso.
+            _notifyIcon.ShowBalloonTip(10_000, Strings.Tray_UpdateBalloonTitle, Strings.Tray_UpdateAvailable(version), ToolTipIcon.Info);
+            return;
+        }
+
         _notifyIcon.ShowBalloonTip(10_000, Strings.Tray_UpdateBalloonTitle, Strings.Tray_UpdateBalloonText(version), ToolTipIcon.Info);
+
+        try
+        {
+            var installerPath = await _updateChecker.DownloadInstallerAsync(update, progress: null, CancellationToken.None);
+            Process.Start(new ProcessStartInfo(installerPath, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART") { UseShellExecute = true });
+            PendingUpdate = null;
+            _updateMenuItem.Visible = false;
+            RequestExit();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or System.ComponentModel.Win32Exception)
+        {
+            // Fica com o item do menu visível (já preenchido acima) como alternativa manual.
+        }
     }
 
     private void ShowMainWindow() => _mainWindow.Dispatcher.Invoke(() =>

@@ -83,8 +83,8 @@
   <data name="Settings_NfcCardPasswordSaved" xml:space="preserve"><value>Mot de passe de protection NFC enregistré.</value></data>
   <data name="Settings_NfcCardPasswordRemoved" xml:space="preserve"><value>Mot de passe de protection NFC supprimé.</value></data>
   <data name="Settings_UpdatesLabel" xml:space="preserve"><value>Mises à jour</value></data>
-  <data name="Settings_UpdatesDescription" xml:space="preserve"><value>Le FloppyGames Agent peut vérifier s'il existe une nouvelle version sur la page des releases GitHub du projet — seulement une lecture de l'API publique de GitHub, rien n'est jamais envoyé.</value></data>
-  <data name="Settings_CheckForUpdatesCheckbox" xml:space="preserve"><value>Vérifier les mises à jour automatiquement au démarrage</value></data>
+  <data name="Settings_UpdatesDescription" xml:space="preserve"><value>Le FloppyGames Agent peut vérifier s'il existe une nouvelle version sur la page des releases GitHub du projet, et l'installer automatiquement en arrière-plan (sans assistant visible) — seulement une lecture de l'API publique de GitHub, rien n'est jamais envoyé.</value></data>
+  <data name="Settings_CheckForUpdatesCheckbox" xml:space="preserve"><value>Vérifier et installer les mises à jour automatiquement au démarrage</value></data>
   <data name="Settings_CheckForUpdatesNowButton" xml:space="preserve"><value>Vérifier maintenant</value></data>
   <data name="Settings_CheckForUpdatesEnabledOn" xml:space="preserve"><value>Vérification automatique des mises à jour activée.</value></data>
   <data name="Settings_CheckForUpdatesEnabledOff" xml:space="preserve"><value>Vérification automatique des mises à jour désactivée.</value></data>
@@ -95,7 +95,7 @@
   <data name="Settings_InstallUpdateButton" xml:space="preserve"><value>Télécharger et installer</value></data>
   <data name="Settings_UpdateDownloading" xml:space="preserve"><value>Téléchargement... {0}%</value></data>
   <data name="Settings_UpdateDownloadFailed" xml:space="preserve"><value>Échec du téléchargement de la mise à jour.</value></data>
-  <data name="Settings_UpdateInstallStarting" xml:space="preserve"><value>Installateur ouvert — le FloppyGames Agent va se fermer pour continuer.</value></data>
+  <data name="Settings_UpdateInstallStarting" xml:space="preserve"><value>Installation en cours — le FloppyGames Agent va se fermer et se rouvrir automatiquement.</value></data>
   <data name="Settings_AboutLabel" xml:space="preserve"><value>À propos</value></data>
   <data name="Settings_AboutDescription" xml:space="preserve"><value>FloppyGames transforme une disquette physique 3.5", une clé USB ou une carte NFC en clé de lancement pour tes jeux Steam, Epic Games et GOG Galaxy. Insère le support : le jeu démarre. Retire-le : le jeu se ferme.
 
@@ -119,7 +119,7 @@
   <data name="Tray_ManyRunning" xml:space="preserve"><value>FloppyGames — {0} jeux en cours d'exécution</value></data>
   <data name="Tray_UpdateAvailable" xml:space="preserve"><value>Mise à jour disponible ({0})</value></data>
   <data name="Tray_UpdateBalloonTitle" xml:space="preserve"><value>Mise à jour FloppyGames disponible</value></data>
-  <data name="Tray_UpdateBalloonText" xml:space="preserve"><value>La version {0} est disponible. Clique ici, ou dans le menu, pour l'installer.</value></data>
+  <data name="Tray_UpdateBalloonText" xml:space="preserve"><value>La version {0} a été trouvée et va être installée automatiquement.</value></data>
 
   <!-- LabelStudioLauncher -->
   <data name="LabelStudioLauncher_NotInstalled" xml:space="preserve"><value>FloppyGames Label Studio n'est pas encore installé dans ce dossier.</value></data>

@@ -174,17 +174,22 @@ Plano de desenvolvimento faseado. Cada fase produz algo executável e testável 
   `Core/Updates/`): lê `GET /repos/diogocarneiro/FLOPPYGAMES/releases/latest` (API pública, sem
   autenticação — só funciona com o repositório público, ver nota abaixo), compara com a versão
   instalada (`AppInfo.Version`) e, se houver uma mais recente, descarrega o
-  `FloppyGamesSetup.exe` anexado com progresso. O Agent verifica sozinho ao arrancar (opt-out em
-  Definições, ligado por omissão, com 5s de atraso para não competir com o resto do arranque) —
-  se encontrar uma versão nova, mostra-a no menu da bandeja e num balão; clicar em qualquer um dos
-  dois abre as Definições, onde "Transferir e instalar" descarrega o instalador, lança-o
-  normalmente (assistente visível) e fecha o Agent de forma limpa para o instalador poder
-  substituir o próprio executável em execução. **Verificado ao vivo** contra a API real do GitHub
-  (comparação de versões e download completo de ~103 MB com progresso corretos) e a UI de
-  Definições testada com o código de produção real (instanciado fora do Agent, sem tocar no leitor
-  NFC) nos dois estados — "já está atualizado" e "versão nova disponível" (com o botão "Transferir
-  e instalar" a aparecer só nesse segundo caso). O clique final em "Instalar" (que abriria mesmo o
-  assistente do Inno Setup) não foi acionado de propósito.
+  `FloppyGamesSetup.exe` anexado com progresso. O Agent **arranca minimizado à bandeja** (sem
+  mostrar a janela principal — `ShutdownMode="OnExplicitShutdown"` permite ficar vivo com zero
+  janelas) e verifica sozinho ao arrancar (opt-out em Definições, ligado por omissão, com 5s de
+  atraso para não competir com o resto do arranque) — se encontrar uma versão nova, **instala-a
+  sozinho**: descarrega o instalador e lança-o em modo silencioso (`/VERYSILENT
+  /SUPPRESSMSGBOXES /NORESTART`, sem assistente visível), fecha o Agent de forma limpa para o
+  instalador poder substituir o próprio executável em execução, e o instalador reabre o Agent
+  sozinho no fim (minimizado, sem perturbar o utilizador). Falha só se não houver instalador
+  anexado à release ou a transferência falhar — nesse caso fica só o aviso no menu da bandeja,
+  que abre as Definições. O botão manual "Transferir e instalar" nas Definições usa exatamente o
+  mesmo caminho silencioso, para o comportamento ser sempre o mesmo, quer a atualização seja
+  automática ou pedida à mão. **Verificado ao vivo** contra a API real do GitHub (comparação de
+  versões e download completo de ~103 MB com progresso corretos) e a UI de Definições testada com
+  o código de produção real (instanciado fora do Agent, sem tocar no leitor NFC) nos dois
+  estados — "já está atualizado" e "versão nova disponível". O clique final em "Instalar" (que
+  dispararia mesmo o instalador silencioso e fecharia o Agent) não foi acionado de propósito.
   - **Pré-requisito descoberto ao construir isto**: a API `releases/latest` devolve 404 para um
     repositório privado, mesmo pedindo a própria release — não há forma de o Agent verificar
     atualizações sem autenticação (que não se pode embutir com segurança numa app distribuída) a

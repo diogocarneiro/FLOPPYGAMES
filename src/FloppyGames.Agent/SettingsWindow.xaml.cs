@@ -185,9 +185,10 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// Descarrega o instalador anexado à release e lança-o normalmente (assistente visível, tal
-    /// como uma instalação manual) — depois pede ao Agent para se fechar de forma limpa, porque o
-    /// instalador precisa de substituir o próprio executável em execução.
+    /// Descarrega o instalador anexado à release e lança-o em modo silencioso (sem assistente,
+    /// sem reiniciar o PC — mesmo comportamento da atualização automática ao arrancar) — depois
+    /// pede ao Agent para se fechar de forma limpa, porque o instalador precisa de substituir o
+    /// próprio executável em execução; o Agent reabre sozinho no fim, minimizado à bandeja.
     /// </summary>
     private async void OnInstallUpdateClicked(object sender, RoutedEventArgs e)
     {
@@ -204,7 +205,7 @@ public partial class SettingsWindow : Window
             var progress = new Progress<double>(p => UpdateStatusText.Text = Strings.Settings_UpdateDownloading((int)(p * 100)));
             var installerPath = await _updateChecker.DownloadInstallerAsync(_pendingUpdate, progress, CancellationToken.None);
 
-            Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(installerPath, "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART") { UseShellExecute = true });
             UpdateStatusText.Text = Strings.Settings_UpdateInstallStarting;
             _trayIconController.RequestExit();
             Close();
