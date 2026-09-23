@@ -132,23 +132,30 @@ public class PollingNfcCardWatcherTests
     /// uma segunda chamada agora devolve de imediato em vez de esperar.
     /// </summary>
     [Fact]
-    public async Task PollNow_CalledWhileAnotherCycleInProgress_ReturnsImmediatelyInsteadOfBlocking()
+    public void PollNow_CalledWhileAnotherCycleInProgress_ReturnsImmediatelyInsteadOfBlocking()
     {
         var readerDetector = new FakeNfcReaderDetector { Readers = { Reader } };
         var probe = new BlockingPresenceProbe();
         var watcher = new PollingNfcCardWatcher(readerDetector, probe, Logger.None);
 
-        var firstCallTask = Task.Run(() => watcher.PollNow());
-        Assert.True(probe.CallStarted.Wait(TimeSpan.FromSeconds(2)));
+        // Uma thread dedicada, não Task.Run: no runner do GitHub (2 núcleos, outros testes em
+        // paralelo) o ThreadPool pode demorar segundos a arrancar a tarefa, e o teste falhava sem
+        // o ciclo lento sequer ter começado.
+        var firstCall = new Thread(watcher.PollNow) { IsBackground = true };
+        firstCall.Start();
+        Assert.True(probe.CallStarted.Wait(TimeSpan.FromSeconds(30)), "O primeiro ciclo nunca chegou à sonda.");
 
         var stopwatch = Stopwatch.StartNew();
         watcher.PollNow();
         stopwatch.Stop();
 
         probe.ReleaseGate.Set();
-        await firstCallTask.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.True(firstCall.Join(TimeSpan.FromSeconds(30)));
 
-        Assert.True(stopwatch.ElapsedMilliseconds < 500, $"PollNow devia devolver de imediato, mas demorou {stopwatch.ElapsedMilliseconds}ms.");
+        // Com o lock antigo, esta segunda chamada ficava bloqueada até a sonda libertar — ou seja,
+        // até ReleaseGate (só depois dela) ou o limite de 5s da sonda. Uma margem de 2s continua a
+        // distinguir as duas situações sem falhar numa máquina lenta.
+        Assert.True(stopwatch.ElapsedMilliseconds < 2000, $"PollNow devia devolver de imediato, mas demorou {stopwatch.ElapsedMilliseconds}ms.");
     }
 
     private sealed class BlockingPresenceProbe : INfcCardPresenceProbe

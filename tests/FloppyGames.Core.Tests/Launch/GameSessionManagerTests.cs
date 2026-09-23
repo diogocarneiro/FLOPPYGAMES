@@ -7,6 +7,13 @@ namespace FloppyGames.Core.Tests.Launch;
 
 public class GameSessionManagerTests
 {
+    /// <summary>
+    /// Só um teto para eventos que devem chegar quase de imediato — nunca é esperado que expire.
+    /// Generoso de propósito: no runner do GitHub (2 núcleos, testes em paralelo) o ThreadPool
+    /// pode demorar segundos a correr as continuações, e 2s chegavam a falhar sem haver bug.
+    /// </summary>
+    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(30);
+
     private const string DriveRoot = "E:\\";
 
     private static string BuildIni(int launchDelaySeconds = 0, bool gracefulShutdown = true) => $"""
@@ -63,7 +70,7 @@ public class GameSessionManagerTests
 
         mediaWatcher.RaiseArrived(DriveRoot);
 
-        var result = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var result = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal([400], launcher.LaunchedConfigs.Select(c => c.AppId));
         Assert.Equal(DriveRoot, result.DriveRoot);
@@ -82,7 +89,7 @@ public class GameSessionManagerTests
 
         mediaWatcher.RaiseArrived(DriveRoot);
 
-        var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var reason = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal(GameLaunchFailureReason.Timeout, reason);
     }
@@ -99,7 +106,7 @@ public class GameSessionManagerTests
         mediaWatcher.RaiseArrived(DriveRoot);
         mediaWatcher.RaiseRemoved(DriveRoot);
 
-        var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var reason = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal(GameLaunchFailureReason.MediaRemovedDuringLaunch, reason);
         Assert.Empty(launcher.LaunchedConfigs);
@@ -116,13 +123,13 @@ public class GameSessionManagerTests
         var launchedTcs = new TaskCompletionSource();
         manager.GameLaunched += (_, _) => launchedTcs.TrySetResult();
         mediaWatcher.RaiseArrived(DriveRoot);
-        await launchedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await launchedTcs.Task.WaitAsync(EventTimeout);
 
         var stoppedTcs = new TaskCompletionSource();
         manager.GameStopped += (_, _) => stoppedTcs.TrySetResult();
 
         mediaWatcher.RaiseRemoved(DriveRoot);
-        await stoppedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await stoppedTcs.Task.WaitAsync(EventTimeout);
 
         var call = Assert.Single(gateway.TerminateCalls);
         Assert.Same(fakeProcess, call.Process);
@@ -139,12 +146,12 @@ public class GameSessionManagerTests
         var launchedTcs = new TaskCompletionSource();
         manager.GameLaunched += (_, _) => launchedTcs.TrySetResult();
         mediaWatcher.RaiseArrived(DriveRoot);
-        await launchedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await launchedTcs.Task.WaitAsync(EventTimeout);
 
         var stoppedTcs = new TaskCompletionSource();
         manager.GameStopped += (_, _) => stoppedTcs.TrySetResult();
         mediaWatcher.RaiseRemoved(DriveRoot);
-        await stoppedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await stoppedTcs.Task.WaitAsync(EventTimeout);
 
         var call = Assert.Single(gateway.TerminateCalls);
         Assert.False(call.Graceful);
@@ -161,7 +168,7 @@ public class GameSessionManagerTests
         var launchedTcs = new TaskCompletionSource();
         manager.GameLaunched += (_, _) => launchedTcs.TrySetResult();
         mediaWatcher.RaiseArrived(DriveRoot);
-        await launchedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await launchedTcs.Task.WaitAsync(EventTimeout);
 
         var stoppedCount = 0;
         manager.GameStopped += (_, _) => stoppedCount++;

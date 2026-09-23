@@ -7,6 +7,13 @@ namespace FloppyGames.Core.Tests.Launch;
 
 public class NfcCardSessionManagerTests
 {
+    /// <summary>
+    /// Só um teto para eventos que devem chegar quase de imediato — nunca é esperado que expire.
+    /// Generoso de propósito: no runner do GitHub (2 núcleos, testes em paralelo) o ThreadPool
+    /// pode demorar segundos a correr as continuações, e 2s chegavam a falhar sem haver bug.
+    /// </summary>
+    private static readonly TimeSpan EventTimeout = TimeSpan.FromSeconds(30);
+
     private const string Reader = "ACME PC/SC Reader 0";
     private const string Uid = "04A1B2C3";
 
@@ -72,7 +79,7 @@ public class NfcCardSessionManagerTests
 
         RaiseArrived(cardWatcher);
 
-        var result = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var result = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal([400], launcher.LaunchedConfigs.Select(c => c.AppId));
         Assert.Equal(Uid, result.Uid);
@@ -91,7 +98,7 @@ public class NfcCardSessionManagerTests
 
         RaiseArrived(cardWatcher);
 
-        var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var reason = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal(GameLaunchFailureReason.Timeout, reason);
     }
@@ -108,7 +115,7 @@ public class NfcCardSessionManagerTests
         RaiseArrived(cardWatcher);
         RaiseRemoved(cardWatcher);
 
-        var reason = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        var reason = await tcs.Task.WaitAsync(EventTimeout);
 
         Assert.Equal(GameLaunchFailureReason.MediaRemovedDuringLaunch, reason);
         Assert.Empty(launcher.LaunchedConfigs);
@@ -125,13 +132,13 @@ public class NfcCardSessionManagerTests
         var launchedTcs = new TaskCompletionSource();
         manager.GameLaunched += (_, _) => launchedTcs.TrySetResult();
         RaiseArrived(cardWatcher);
-        await launchedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await launchedTcs.Task.WaitAsync(EventTimeout);
 
         var stoppedTcs = new TaskCompletionSource();
         manager.GameStopped += (_, _) => stoppedTcs.TrySetResult();
 
         RaiseRemoved(cardWatcher);
-        await stoppedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await stoppedTcs.Task.WaitAsync(EventTimeout);
 
         var call = Assert.Single(gateway.TerminateCalls);
         Assert.Same(fakeProcess, call.Process);
@@ -149,7 +156,7 @@ public class NfcCardSessionManagerTests
         var launchedTcs = new TaskCompletionSource();
         manager.GameLaunched += (_, _) => launchedTcs.TrySetResult();
         RaiseArrived(cardWatcher);
-        await launchedTcs.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await launchedTcs.Task.WaitAsync(EventTimeout);
 
         var stoppedCount = 0;
         manager.GameStopped += (_, _) => stoppedCount++;
