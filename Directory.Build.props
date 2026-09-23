@@ -6,6 +6,9 @@
     <LangVersion>latest</LangVersion>
     <Company>Diogo Carneiro</Company>
     <Product>FloppyGames</Product>
+    <!-- Mostrada no rodapé do Agent e do Label Studio. Manter igual a MyAppVersion em
+         src/FloppyGames.Installer/FloppyGames.iss (a versão que aparece em "Programas e Funcionalidades"). -->
+    <Version>0.1.0</Version>
     <Authors>Diogo Carneiro</Authors>
     <Copyright>© 2026 Diogo Carneiro. Tous droits réservés.</Copyright>
     <PackageProjectUrl>https://www.diogocarneiro.fr</PackageProjectUrl>

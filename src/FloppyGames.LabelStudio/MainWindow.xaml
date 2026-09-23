@@ -25,6 +25,10 @@
             <ColumnDefinition Width="16" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
         <!-- Passo 1: escolher a plataforma e o jogo -->
         <DockPanel Grid.Column="0">
@@ -168,5 +172,8 @@
                 <Button x:Name="ChooseLocalCoverButton" Grid.Row="1" Margin="0,8,0,0" Click="OnChooseLocalCoverClicked" />
             </Grid>
         </DockPanel>
+
+        <TextBlock x:Name="FooterText" Grid.Row="1" Grid.ColumnSpan="3" Foreground="Gray" FontSize="11"
+                   HorizontalAlignment="Center" Margin="0,12,0,0" />
     </Grid>
 </Window>

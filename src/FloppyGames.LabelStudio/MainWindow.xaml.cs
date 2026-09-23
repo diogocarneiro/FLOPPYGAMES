@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using FloppyGames.Core;
 using FloppyGames.Core.Catalog;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Localization;
@@ -161,6 +162,7 @@ public partial class MainWindow : Window
         ProtectCardHintText.Text = Strings.LS_Nfc_ProtectNoPasswordHint;
         PrintLabelButton.Content = Strings.LS_PrintButton;
         ChooseLocalCoverButton.Content = Strings.LS_ChooseLocalCoverButton;
+        FooterText.Text = AppInfo.FooterText;
     }
 
     private GamePlatform SelectedPlatform() =>

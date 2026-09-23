@@ -3,6 +3,7 @@
 ; publish\Agent e publish\LabelStudio já existam nesta pasta.
 
 #define MyAppName "FloppyGames"
+; Manter igual a <Version> em Directory.Build.props (a versão mostrada no rodapé das apps).
 #define MyAppVersion "0.1.0"
 #define MyAppPublisher "Diogo Carneiro"
 #define MyAppURL "https://www.diogocarneiro.fr"

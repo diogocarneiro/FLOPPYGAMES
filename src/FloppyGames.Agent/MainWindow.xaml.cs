@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Windows;
+using FloppyGames.Core;
 using FloppyGames.Core.Configuration;
 using FloppyGames.Core.Launch;
 using FloppyGames.Core.Localization;
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = this;
         SubtitleText.Text = Strings.MainWindow_Subtitle;
+        FooterText.Text = AppInfo.FooterText;
 
         _logger = LoggingBootstrapper.CreateLogger("Agent");
         _logger.Information("FloppyGames Agent iniciado.");

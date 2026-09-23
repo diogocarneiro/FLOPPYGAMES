@@ -13,6 +13,8 @@
             <TextBlock Text="FloppyGames Agent" FontSize="20" FontWeight="Bold" />
             <TextBlock x:Name="SubtitleText" TextWrapping="Wrap" Foreground="Gray" Margin="0,4,0,0" />
         </StackPanel>
+        <TextBlock x:Name="FooterText" DockPanel.Dock="Bottom" Foreground="Gray" FontSize="11"
+                   HorizontalAlignment="Center" Margin="0,8,0,0" />
         <ListBox ItemsSource="{Binding StatusLog}" FontFamily="Consolas" />
     </DockPanel>
 </Window>
